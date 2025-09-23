@@ -1,542 +1,723 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8" />
-<title>GFC 연구소 재고관리 (Firestore 실시간 + CSV)</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<style>
-  :root { color-scheme: light dark; }
-  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Arial, sans-serif; margin: 24px; }
-  h1 { margin: 0 0 12px; font-size: 22px; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
-  input, select, button { padding:8px; font-size:14px; }
-  input[type="number"] { width:120px; }
-  input[type="date"] { width:175px; }
-  input[type="text"] { width:220px; }
-  .grow { flex:1; min-width:220px; }
-  table { width:100%; border-collapse:collapse; margin-top:10px; }
-  th, td { border:1px solid #ccc; padding:8px; text-align:left; }
-  th { background:#f4f4f4; user-select:none; }
-  tfoot td { font-weight:600; background:#fafafa; }
-  .muted { opacity:.7; font-size:12px; }
-  .right { text-align:right; }
-  .danger { background:#d9534f; color:#fff; border:none; }
-  .primary { background:#0d6efd; color:#fff; border:none; }
-  .secondary { background:#6c757d; color:#fff; border:none; }
-  .ghost { background:transparent; border:1px solid #ccc; }
-  .badge { display:inline-block; padding:2px 6px; border-radius:10px; background:#eee; font-size:12px; }
-  .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-  .qtybar button { padding:4px 6px; font-size:12px; margin-right:4px; }
-  .warn { color:#b33; font-weight:600; }
-  .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; }
-  .modal { background:#fff; color:inherit; width:min(980px, 96vw); max-height:90vh; overflow:auto; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,.2); }
-  .modal header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #ddd; }
-  .modal header h2 { margin:0; font-size:18px; }
-  .modal .content { padding:12px 16px; }
-  .modal .actions { display:flex; gap:8px; justify-content:flex-end; padding:12px 16px; border-top:1px solid #ddd; }
-  .close { background:#eee; border:none; padding:6px 10px; }
-  .csvbar { display:flex; gap:8px; align-items:center; }
-</style>
+  <meta charset="utf-8">
+  <title>GFC 재고관리</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Arial, sans-serif; margin: 24px; }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+    input, select, button { padding: 8px; font-size: 14px; }
+    input[type=number] { width: 120px; }
+    input[type=date] { width: 175px; }
+    input[type=text] { width: 220px; }
+    .grow { flex: 1; min-width: 220px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #f4f4f4; user-select: none; }
+    tfoot td { font-weight: 600; background: #fafafa; }
+    .muted { opacity: .7; font-size: 12px; }
+    .right { text-align: right; }
+    .nowrap { white-space: nowrap; }
+    .danger { background: #d9534f; color: #fff; border: none; }
+    .primary { background: #0d6efd; color: #fff; border: none; }
+    .secondary { background: #6c757d; color: #fff; border: none; }
+    .ghost { background: transparent; border: 1px solid #ccc; }
+    .badge { display: inline-block; padding: 2px 6px; font-size: 12px; border-radius: 4px; background: #eee; }
+    .qtybar button { padding: 6px 8px; }
+    .clickable { cursor: pointer; }
+    .flex { display: flex; gap: 8px; align-items: center; }
+    .flat { list-style: none; padding: 0; margin: 0; }
+    .flat li { padding: 4px 0; border-bottom: 1px dashed #e5e5e5; }
+    dialog { border: none; border-radius: 8px; padding: 0; max-width: 800px; width: 90vw; }
+    .modal { padding: 16px 16px 12px; }
+    .modal h3 { margin: 0 0 8px; }
+    .modal .actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .pill { border-radius: 999px; padding: 6px 10px; font-size: 12px; border: 1px solid #ddd; background: #fafafa; }
+    .tooltip { font-size: 12px; color: #666; }
+    @media (max-width: 640px) {
+      input[type=text], select { width: 100%; }
+    }
+  </style>
 </head>
 <body>
-<h1>GFC 연구소 소모품 재고관리</h1>
+  <h1>GFC생명과학 연구소 소모품 재고관리</h1>
 
-<div class="toolbar">
-  <input id="search" class="grow" type="text" placeholder="검색: 품목명, 상위연구소, 하위Lab, 위치" />
-  <select id="filterGroup">
-    <option value="">상위 연구소(전체)</option>
-    <option value="GBC">GBC 연구소</option>
-    <option value="HMC">HMC 연구소</option>
-    <option value="RNA">RNA 치료제 연구소</option>
-  </select>
-  <select id="lowStockFilter">
-    <option value="">전체</option>
-    <option value="low">재고부족만</option>
-  </select>
-  <input id="lowStockLevel" type="number" step="1" value="5" title="재고부족 기준 수량" />
-  <span id="syncState" class="muted">실시간 동기화</span>
-</div>
+  <!-- 상단 툴바 -->
+  <div class="row">
+    <input id="search" type="text" class="grow" placeholder="품목명/위치/메모 검색">
+    <select id="rootLab">
+      <option value="">상위 연구소(전체)</option>
+      <option>GBC 연구소</option>
+      <option>HMC 연구소</option>
+      <option>RNA 치료제 연구소</option>
+    </select>
+    <select id="childLab">
+      <option value="">하위 Lab 선택</option>
+    </select>
+    <select id="filterStock">
+      <option value="all">전체</option>
+      <option value="low">재고부족만</option>
+    </select>
 
-<div class="row csvbar">
-  <button id="btnExportCsv" class="ghost">재고 CSV</button>
-  <label class="ghost" style="padding:6px 10px; cursor:pointer;">
-    재고 CSV 가져오기
-    <input id="fileCsv" type="file" accept=".csv,text/csv" style="display:none" />
-  </label>
-  <span class="muted">CSV 헤더: name,labGroup,lab,loc,reorder,qty,checkDate</span>
-</div>
+    <button id="exportCSV" class="ghost">재고 CSV</button>
+    <label class="ghost" style="padding:7px; cursor:pointer">
+      재고 CSV 가져오기
+      <input id="importCSV" type="file" accept=".csv" style="display:none">
+    </label>
 
-<div class="row">
-  <input id="name" type="text" placeholder="품목명" />
-  <select id="labGroup">
-    <option value="">상위 연구소 선택</option>
-    <option value="GBC">GBC 연구소</option>
-    <option value="HMC">HMC 연구소</option>
-    <option value="RNA">RNA 치료제 연구소</option>
-  </select>
-  <select id="lab" disabled>
-    <option value="">하위 Lab 선택</option>
-  </select>
-  <input id="loc" type="text" placeholder="위치" />
-  <input id="reorder" type="number" step="1" placeholder="재고부족 임계치(선택)" />
-  <input id="checkDate" type="date" title="재고 확인 날짜(선택)" />
-  <button id="addItemBtn" class="primary">품목 등록</button>
-  <button id="resetItemBtn" class="ghost">폼 초기화</button>
-</div>
-
-<div class="row">
-  <input id="quickName" type="text" placeholder="빠른 조정: 품목명" />
-  <input id="quickDelta" type="number" step="1" placeholder="변경 수량(+/-)" />
-  <input id="quickDate" type="date" title="재고 확인 날짜(선택)" />
-  <button id="quickApplyBtn" class="secondary">적용</button>
-</div>
-
-<table id="itemsTable">
-  <thead>
-    <tr>
-      <th>품목명</th>
-      <th>상위연구소</th>
-      <th>하위Lab</th>
-      <th>위치</th>
-      <th class="right">현재고</th>
-      <th>재고 확인 날짜</th>
-      <th>작업</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-  <tfoot>
-    <tr>
-      <td>총 품목 <span id="count" class="badge">0</span></td>
-      <td colspan="2"></td>
-      <td></td>
-      <td class="right" id="sumQty">0</td>
-      <td></td>
-      <td></td>
-    </tr>
-  </tfoot>
-</table>
-
-<div id="detailBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
-  <div class="modal">
-    <header>
-      <h2 id="detailTitle">이력</h2>
-      <button id="detailClose" class="close" aria-label="닫기">닫기</button>
-    </header>
-    <div class="content">
-      <div id="detailMeta" class="muted"></div>
-      <div class="row">
-        <input id="d_date" type="date" />
-        <input id="d_qty" type="number" step="1" placeholder="수량 (+입고, -출고)" />
-        <input id="d_note" type="text" class="grow" placeholder="비고(예: 발주번호/로트)" />
-        <button id="d_add_in" class="secondary">입고</button>
-        <button id="d_add_out" class="ghost">출고</button>
-      </div>
-      <table id="txTable">
-        <thead>
-          <tr>
-            <th>날짜</th>
-            <th class="right">수량</th>
-            <th>비고</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <div class="actions">
-      <button id="detailClose2" class="close">닫기</button>
-    </div>
+    <button id="copyTextBtn" class="ghost">텍스트 복사</button>
+    <label class="ghost" style="padding:7px; cursor:pointer">
+      <input id="fbSyncToggle" type="checkbox" style="vertical-align:middle;margin-right:6px">
+      Firebase 동기화
+    </label>
   </div>
-</div>
 
-<div class="muted">Tip: 여러 기기에서 같은 URL로 접속하면 Firestore onSnapshot으로 즉시 동기화됩니다.</div>
+  <!-- 품목 등록 -->
+  <div class="row">
+    <span class="badge">품목 등록</span>
+    <input id="itemName" type="text" placeholder="품목명">
+    <select id="itemRootLab">
+      <option value="">상위연구소</option>
+      <option>GBC 연구소</option>
+      <option>HMC 연구소</option>
+      <option>RNA 치료제 연구소</option>
+    </select>
+    <select id="itemChildLab">
+      <option value="">하위Lab</option>
+    </select>
+    <input id="itemLoc" type="text" placeholder="위치">
+    <input id="reorderPoint" type="number" step="1" placeholder="재고경고수량">
+    <input id="unitCost" type="number" step="0.01" placeholder="단가(원)">
+    <input id="checkDate" type="date" placeholder="재고 확인 날짜">
+    <button id="resetItemBtn" class="ghost">폼 초기화</button>
+    <button id="addItemBtn" class="primary">적용</button>
+  </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import {
-    getFirestore, collection, doc, addDoc, updateDoc, deleteDoc,
-    onSnapshot, query, orderBy, where, serverTimestamp, writeBatch
-  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  <!-- 목록 -->
+  <table id="itemsTable">
+    <thead>
+      <tr>
+        <th>품목명</th>
+        <th>상위연구소</th>
+        <th>하위Lab</th>
+        <th>위치</th>
+        <th class="right">현재고</th>
+        <th class="right">단가(원)</th>
+        <th>재고 확인 날짜</th>
+        <th>작업</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+    <tfoot>
+      <tr>
+        <td colspan="8">
+          <span>총 품목 <span id="countItems">0</span></span>
+          <span style="margin-left:16px">재고합계 <span id="sumQty">0</span></span>
+        </td>
+      </tr>
+    </tfoot>
+  </table>
 
-  // 1) Firebase 콘솔 값으로 교체
-  const firebaseConfig = {
-   apiKey: "AIzaSyCTn9uq5vSbAn8SnxIlG_AwXvvz8_Is5R4",
-   authDomain: "gfc-inventory.firebaseapp.com",
-   projectId: "gfc-inventory",
-   storageBucket: "gfc-inventory.firebasestorage.app",
-   messagingSenderId: "402572923133",
-   appId: "1:402572923133:web:7a8bcbd02d2ce23939ee94"
-  };
+  <p class="muted">Tip: 품목 행을 클릭하면 해당 품목의 입고/출고 이력 모달이 열립니다. 모달에서 바로 입고/출고를 기록하면 현재고와 날짜가 업데이트됩니다.</p>
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  <!-- 상세 모달 -->
+  <dialog id="detailModal">
+    <div class="modal">
+      <h3 id="detailTitle">상세</h3>
+      <div class="row">
+        <span class="pill" id="detailMeta"></span>
+        <span class="pill" id="detailLoc"></span>
+        <span class="pill" id="detailQty"></span>
+        <span class="pill" id="detailPrice"></span>
+      </div>
 
-  // 유틸/상태
-  const $ = (s)=>document.querySelector(s);
-  const LAB_OPTIONS = {
-    GBC: ["마이크로바이옴Lab","융합기술 Lab","재생바이오lab"],
-    HMC: ["활성연구 Lab","식물세포연구Lab","제형연구 Lab","신소재연구 Lab"],
-    RNA: ["RNA Lab"]
-  };
-  function setupLabSelectorsPair(groupId, labId){
-    const g = document.getElementById(groupId);
-    const l = document.getElementById(labId);
-    function render(){
-      const v = g.value || "";
-      l.innerHTML = "";
-      if (!v || !LAB_OPTIONS[v]) { l.disabled=true; l.innerHTML='<option value="">하위 Lab 선택</option>'; return; }
-      l.disabled=false;
-      for (const name of LAB_OPTIONS[v]) {
-        const o=document.createElement('option'); o.value=name; o.textContent=name; l.appendChild(o);
+      <div class="row">
+        <button id="txIn" class="secondary">입고</button>
+        <button id="txOut" class="secondary">출고</button>
+        <input id="txDate" type="date" class="nowrap">
+        <input id="txQty" type="number" step="1" placeholder="수량">
+        <input id="txNote" type="text" class="grow" placeholder="비고(메모)">
+      </div>
+
+      <div class="row">
+        <button id="copyTxBtn" class="ghost">히스토리 복사</button>
+      </div>
+
+      <div>
+        <table style="margin-top:8px">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th class="right">수량(+/-)</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody id="txBody"></tbody>
+        </table>
+      </div>
+
+      <div class="actions" style="margin-top:10px">
+        <button id="closeDetail" class="ghost">닫기</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    // --- 상태 및 유틸 ---
+    const state = {
+      items: [],
+      tx: [],
+      detailItemId: null,
+      labsMap: {
+        "GBC 연구소": ["마이크로바이옴Lab", "융합기술Lab", "재생바이오Lab"],
+        "HMC 연구소": ["활성연구Lab", "식물세포연구Lab", "제형연구Lab", "신소재연구Lab"],
+        "RNA 치료제 연구소": ["RNA Lab"]
       }
-    }
-    g.addEventListener('change', render); render();
-  }
-  function today(){ return new Date().toISOString().slice(0,10); }
-  function num(v){ const n=Number(v); return isNaN(n)?0:n; }
-  function toCsvRow(fields){ return fields.map(v => {
-    const s = (v ?? '').toString();
-    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
-    return s;
-  }).join(','); }
-  function parseCsv(text){
-    const rows = [];
-    let i=0, field='', inQ=false, row=[];
-    while (i<=text.length){
-      const ch = text[i] ?? '\n';
-      if (inQ){
-        if (ch === '"'){
-          if (text[i+1] === '"'){ field+='"'; i++; }
-          else inQ=false;
-        } else field+=ch;
-      } else {
-        if (ch === '"'){ inQ=true; }
-        else if (ch === ','){ row.push(field); field=''; }
-        else if (ch === '\n' || i===text.length){ row.push(field); rows.push(row); field=''; row=[]; }
-        else field+=ch;
-      }
-      i++;
-    }
-    return rows.filter(r => r.length && r.some(c=>c.trim()!==''));
-  }
-
-  let itemsCache = [];
-  let detailItemId = null;
-  let unsubItems = null;
-  let unsubTx = null;
-
-  // 실시간 items 구독
-  function subscribeItems(){
-    const qItems = query(collection(db, "items"), orderBy("name"));
-    if (unsubItems) unsubItems();
-    unsubItems = onSnapshot(qItems, (snap)=>{
-      itemsCache = snap.docs.map(d=>({ id: d.id, ...d.data() }));
-      renderItems();
-      $('#syncState').textContent='실시간 동기화';
-    }, (err)=>{ console.error(err); $('#syncState').textContent='동기화 오류'; });
-  }
-
-  // CRUD
-  async function addItem(){
-    const it = {
-      name: $('#name').value.trim(),
-      labGroup: $('#labGroup').value,
-      lab: $('#lab').value,
-      loc: $('#loc').value.trim(),
-      reorder: $('#reorder').value.trim()===''? '' : Number($('#reorder').value),
-      qty: 0,
-      checkDate: $('#checkDate').value || '',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
     };
-    if (!it.name) return alert('품목명 필수');
-    if (!it.labGroup || !it.lab) return alert('상위 연구소/하위 Lab 선택');
-    await addDoc(collection(db, "items"), it);
-    $('#name').value=''; $('#labGroup').value='';
-    $('#lab').innerHTML='<option value="">하위 Lab 선택</option>'; $('#lab').disabled=true;
-    $('#loc').value=''; $('#reorder').value=''; $('#checkDate').value='';
-  }
 
-  async function adjustQty(itemIdRaw, delta, dateOpt, noteOpt){
-    const itemId = String(itemIdRaw);
-    const it = itemsCache.find(x=>String(x.id)===itemId); if (!it) return;
-    const dateVal = dateOpt || it.checkDate || today();
-    const newQty = num(it.qty) + num(delta);
-    await updateDoc(doc(db,"items", itemId), {
-      qty: newQty, checkDate: dateVal, updatedAt: serverTimestamp(),
-    });
-    await addDoc(collection(db,"tx"), {
-      itemId, date: dateVal, qty: num(delta), note: noteOpt || '', createdAt: serverTimestamp(),
-    });
-  }
+    const el = id => document.getElementById(id);
+    const today = () => new Date().toISOString().slice(0,10);
+    const nextId = arr => (arr.reduce((m,x)=>Math.max(m, Number(x.id||0)), 0) + 1);
 
-  async function setQtyAndDate(itemIdRaw, value, dateOpt, noteOpt){
-    const itemId = String(itemIdRaw);
-    const it = itemsCache.find(x=>String(x.id)===itemId); if (!it) return;
-    const dateVal = dateOpt || it.checkDate || today();
-    const delta = num(value) - num(it.qty);
-    await updateDoc(doc(db,"items", itemId), {
-      qty: num(value), checkDate: dateVal, updatedAt: serverTimestamp(),
+    function save() {
+      localStorage.setItem('gfc_items', JSON.stringify(state.items));
+      localStorage.setItem('gfc_tx', JSON.stringify(state.tx));
+    }
+    function load() {
+      try {
+        state.items = JSON.parse(localStorage.getItem('gfc_items')||'[]');
+        state.tx = JSON.parse(localStorage.getItem('gfc_tx')||'[]');
+      } catch { state.items = []; state.tx = []; }
+    }
+
+    // --- Lab 종속 셀렉트 ---
+    function syncChildOptions(rootSel, childSel) {
+      const root = rootSel.value;
+      const opts = root ? (state.labsMap[root] || []) : [];
+      childSel.innerHTML = '<option value="">하위Lab</option>';
+      for (const name of opts) {
+        const o = document.createElement('option');
+        o.textContent = name; o.value = name;
+        childSel.appendChild(o);
+      }
+    }
+
+    el('itemRootLab').addEventListener('change', () => syncChildOptions(el('itemRootLab'), el('itemChildLab')));
+    el('rootLab').addEventListener('change', () => {
+      syncChildOptions(el('rootLab'), el('childLab'));
+      renderItems();
     });
-    if (delta !== 0){
-      await addDoc(collection(db,"tx"), {
-        itemId, date: dateVal, qty: delta, note: noteOpt || '수량 직접설정', createdAt: serverTimestamp(),
+    el('childLab').addEventListener('change', renderItems);
+    el('filterStock').addEventListener('change', renderItems);
+
+    // --- 검색 ---
+    el('search').addEventListener('input', renderItems);
+
+    // --- CSV ---
+    function csvCell(v) {
+      if (v == null) return '';
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+    }
+    function downloadCSV(text, filename) {
+      const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    function exportItemsCSV() {
+      const headers = ['id','name','labGroup','lab','loc','reorder','qty','unit_cost','checkDate'];
+      const rows = [headers.join(',')];
+      for (const x of state.items) {
+        rows.push([x.id, x.name, x.labGroup, x.lab, x.loc, x.reorder,
+                   x.qty||0,
+                   (typeof x.unit_cost==='number'? x.unit_cost : ''),
+                   x.checkDate].map(csvCell).join(','));
+      }
+      downloadCSV(rows.join('\n'), 'items.csv');
+    }
+    el('exportCSV').addEventListener('click', exportItemsCSV);
+
+    el('importCSV').addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      if (!lines.length) return;
+      const head = lines.shift().split(',');
+      const idx = name => head.findIndex(h => h.trim()===name);
+      const idI = idx('id'), nameI = idx('name'), labGroupI = idx('labGroup'), labI = idx('lab');
+      const locI = idx('loc'), reorderI = idx('reorder'), qtyI = idx('qty'), unitCostI = idx('unit_cost'), cdI = idx('checkDate');
+      const items = [];
+      for (const line of lines) {
+        const cols = parseCsvLine(line);
+        const it = {
+          id: Number(cols[idI] || 0) || nextId(items),
+          name: cols[nameI],
+          labGroup: cols[labGroupI],
+          lab: cols[labI],
+          loc: cols[locI],
+          reorder: cols[reorderI] ? Number(cols[reorderI]) : undefined,
+          qty: Number(cols[qtyI] || 0),
+          unit_cost: cols[unitCostI] ? Number(cols[unitCostI]) : undefined,
+          checkDate: cols[cdI] || ''
+        };
+        items.push(it);
+      }
+      // 단순 병합 (id 기준 교체)
+      const map = new Map(state.items.map(x=>[String(x.id), x]));
+      for (const it of items) map.set(String(it.id), it);
+      state.items = Array.from(map.values());
+      save(); renderItems();
+      e.target.value = '';
+      alert('CSV 가져오기 완료');
+    });
+
+    function parseCsvLine(line) {
+      const out = []; let cur = ''; let q = false;
+      for (let i=0;i<line.length;i++) {
+        const c = line[i];
+        if (q) {
+          if (c === '"') {
+            if (line[i+1] === '"') { cur += '"'; i++; }
+            else { q = false; }
+          } else cur += c;
+        } else {
+          if (c === ',') { out.push(cur); cur = ''; }
+          else if (c === '"') { q = true; }
+          else cur += c;
+        }
+      }
+      out.push(cur);
+      return out;
+    }
+
+    // --- 품목 추가/수정 ---
+    el('resetItemBtn').addEventListener('click', () => {
+      el('itemName').value = '';
+      el('itemRootLab').value = '';
+      syncChildOptions(el('itemRootLab'), el('itemChildLab'));
+      el('itemLoc').value = '';
+      el('reorderPoint').value = '';
+      el('unitCost').value = '';
+      el('checkDate').value = '';
+    });
+
+    el('addItemBtn').addEventListener('click', () => {
+      const name = el('itemName').value.trim();
+      const labGroup = el('itemRootLab').value;
+      const lab = el('itemChildLab').value;
+      const loc = el('itemLoc').value.trim();
+      const reorder = el('reorderPoint').value.trim() ? Number(el('reorderPoint').value) : undefined;
+      const unit_cost = el('unitCost').value.trim() ? Number(el('unitCost').value) : undefined;
+      const checkDate = el('checkDate').value;
+
+      if (!name) return alert('품목명을 입력하세요');
+      if (!labGroup || !lab) return alert('Lab를 선택하세요');
+
+      const dup = state.items.find(x => x.name===name && x.labGroup===labGroup && x.lab===lab && x.loc===loc);
+      if (dup) return alert('같은 장소의 동일 품목이 이미 있습니다');
+
+      const it = { id: nextId(state.items), name, labGroup, lab, loc, reorder, qty: 0, unit_cost, checkDate };
+      state.items.push(it);
+      save(); renderItems();
+    });
+
+    // --- 복붙용 텍스트 ---
+    function filteredItems() {
+      const kw = el('search').value.trim().toLowerCase();
+      const root = el('rootLab').value;
+      const child = el('childLab').value;
+      const stockFilter = el('filterStock').value;
+
+      return state.items.filter(it => {
+        if (root && it.labGroup !== root) return false;
+        if (child && it.lab !== child) return false;
+        if (stockFilter === 'low' && (typeof it.reorder === 'number') && (Number(it.qty||0) > it.reorder)) return false;
+        if (!kw) return true;
+        const hay = [
+          it.name, it.labGroup, it.lab, it.loc,
+          String(it.qty||0), String(it.reorder??''), it.checkDate||'',
+        ].join(' ').toLowerCase();
+        return hay.includes(kw);
       });
     }
-  }
 
-  async function deleteItem(itemId){
-    if (!confirm('품목을 삭제할까요? (이력은 유지됨)')) return;
-    await deleteDoc(doc(db,"items", String(itemId)));
-    if (detailItemId===String(itemId)) closeDetail();
-  }
-
-  // CSV 내보내기
-  function exportCsv(){
-    const header = ['name','labGroup','lab','loc','reorder','qty','checkDate'];
-    const rows = [toCsvRow(header)];
-    const arr = itemsCache.slice().sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')));
-    for (const it of arr){
-      rows.push(toCsvRow([
-        it.name||'', it.labGroup||'', it.lab||'', it.loc||'',
-        it.reorder===''||it.reorder==null?'':it.reorder,
-        it.qty==null?'':it.qty,
-        it.checkDate||''
-      ]));
-    }
-    const blob = new Blob([rows.join('\n')], { type:'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `inventory_${today()}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  // CSV 불러오기(머지 업서트)
-  async function importCsv(file){
-    const text = await file.text();
-    const rows = parseCsv(text);
-    if (!rows.length) return alert('CSV 내용이 비어 있습니다');
-    const header = rows[0].map(h=>h.trim());
-    const idx = Object.fromEntries(header.map((h,i)=>[h,i]));
-    const required = ['name','labGroup','lab','loc','reorder','qty','checkDate'];
-    for (const k of required){ if (!(k in idx)) return alert('CSV 헤더 확인: ' + required.join(',')); }
-
-    // 현재 items를 이름 기준으로 맵
-    const byName = new Map(itemsCache.map(it => [String((it.name||'').toLowerCase()), it]));
-    const batch = writeBatch(db);
-    const itemsCol = collection(db, 'items');
-
-    for (let r=1; r<rows.length; r++){
-      const row = rows[r];
-      const name = (row[idx.name]||'').trim();
-      if (!name) continue;
-      const payload = {
-        name,
-        labGroup: (row[idx.labGroup]||'').trim(),
-        lab: (row[idx.lab]||'').trim(),
-        loc: (row[idx.loc]||'').trim(),
-        reorder: row[idx.reorder]? Number(row[idx.reorder]) : '',
-        qty: row[idx.qty]? Number(row[idx.qty]) : 0,
-        checkDate: (row[idx.checkDate]||'').trim(),
-        updatedAt: serverTimestamp()
-      };
-      const key = name.toLowerCase();
-      const found = byName.get(key);
-      if (found){
-        batch.update(doc(db,'items', found.id), payload);
-      } else {
-        payload.createdAt = serverTimestamp();
-        // 새 문서 추가는 batch.add가 없어 개별 addDoc로 처리
-        await addDoc(itemsCol, payload);
+    function buildPlainTextForClipboard(items) {
+      const lines = [];
+      lines.push('품목 | LabGroup/Lab | 위치 | 수량 | 단가(원) | 최종재고일 | 비고');
+      for (const it of items) {
+        lines.push([
+          it.name,
+          `${it.labGroup}/${it.lab}`,
+          it.loc,
+          String(it.qty||0),
+          (typeof it.unit_cost === 'number' ? it.unit_cost.toFixed(2) : ''),
+          it.checkDate || '',
+          ''
+        ].join(' | '));
       }
+      return lines.join('\n');
     }
-    await batch.commit();
-    alert('CSV 반영 완료');
-  }
 
-  // 렌더링/필터
-  function filteredItems(){
-    const q = $('#search').value.trim().toLowerCase();
-    const lowOnly = $('#lowStockFilter').value==='low';
-    const lowLevel = num($('#lowStockLevel').value)||0;
-    const groupFilter = $('#filterGroup').value;
-    let arr = itemsCache.slice();
-    if (q){
-      arr = arr.filter(x =>
-        (x.name||'').toLowerCase().includes(q) ||
-        (x.labGroup||'').toLowerCase().includes(q) ||
-        (x.lab||'').toLowerCase().includes(q) ||
-        (x.loc||'').toLowerCase().includes(q)
-      );
+    el('copyTextBtn').addEventListener('click', async () => {
+      const text = buildPlainTextForClipboard(filteredItems());
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('복사되었습니다. 메모장에 붙여넣기 하세요.');
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove();
+        alert('복사되었습니다. 메모장에 붙여넣기 하세요.');
+      }
+    });
+
+    // --- 렌더링 ---
+    function renderItems() {
+      const tbody = el('itemsTable').querySelector('tbody');
+      tbody.innerHTML = '';
+      const arr = filteredItems();
+      let sum = 0;
+      for (const it of arr) {
+        sum += Number(it.qty||0);
+        const tr = document.createElement('tr');
+        const warn = (typeof it.reorder==='number' && Number(it.qty||0) <= it.reorder) ? '<span class="badge">재고부족</span>' : '';
+        tr.innerHTML = `
+          <td class="clickable" data-act="openDetail" data-id="${it.id}">${it.name} ${warn}</td>
+          <td>${it.labGroup}</td>
+          <td>${it.lab}</td>
+          <td>${it.loc}</td>
+          <td class="right">
+            <input data-act="setQty" data-id="${it.id}" type="number" step="1"
+                   value="${it.qty||0}" style="width:100px;text-align:right">
+          </td>
+          <td class="right">
+            <input data-act="setPrice" data-id="${it.id}" type="number" step="0.01"
+                   value="${it.unit_cost ?? ''}" style="width:110px;text-align:right" placeholder="0.00">
+          </td>
+          <td>
+            <input data-act="setDate" data-id="${it.id}" type="date" value="${it.checkDate||''}">
+          </td>
+          <td>
+            <div class="qtybar">
+              <button data-act="adj" data-id="${it.id}" data-delta="10">+10</button>
+              <button data-act="adj" data-id="${it.id}" data-delta="1">+1</button>
+              <button data-act="adj" data-id="${it.id}" data-delta="-1">-1</button>
+              <button data-act="adj" data-id="${it.id}" data-delta="-10">-10</button>
+              <button data-act="openDetail" data-id="${it.id}" class="secondary">히스토리</button>
+              <button data-act="del" data-id="${it.id}" class="danger">삭제</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+      el('sumQty').textContent = String(sum);
+      el('countItems').textContent = String(arr.length);
     }
-    if (groupFilter) arr = arr.filter(x => (x.labGroup||'')===groupFilter);
-    if (lowOnly) arr = arr.filter(x => num(x.qty) <= (num(x.reorder)||lowLevel));
-    arr.sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')));
-    return arr;
-  }
 
-  function renderItems(){
-    const body = document.querySelector('#itemsTable tbody'); body.innerHTML='';
-    const arr = filteredItems();
-    let sumQty=0;
-    for (const it of arr){
-      sumQty += num(it.qty);
-      const tr = document.createElement('tr');
-      tr.setAttribute('data-id', it.id);
-      const warn = (num(it.qty) <= (num(it.reorder)||num($('#lowStockLevel').value)||0)) ? '<span class="warn">⚠</span>':'';
-      tr.innerHTML = `
-        <td class="clickable">${it.name||''} ${warn}</td>
-        <td>${it.labGroup||''}</td>
-        <td>${it.lab||''}</td>
-        <td>${it.loc||''}</td>
-        <td class="right">
-          <input data-act="setQty" data-id="${it.id}" type="number" step="1" value="${it.qty||0}" style="width:100px;text-align:right;" />
-        </td>
-        <td>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <input data-act="setDate" data-id="${it.id}" type="date" value="${it.checkDate||''}" />
-          </div>
-        </td>
-        <td>
-          <div class="qtybar">
-            <button data-act="adj" data-id="${it.id}" data-delta="10">+10</button>
-            <button data-act="adj" data-id="${it.id}" data-delta="1">+1</button>
-            <button data-act="adj" data-id="${it.id}" data-delta="-1">-1</button>
-            <button data-act="adj" data-id="${it.id}" data-delta="-10">-10</button>
-            <button data-act="del" data-id="${it.id}" class="danger">삭제</button>
-          </div>
-        </td>
-      `;
-      body.appendChild(tr);
+    el('itemsTable').addEventListener('click', (e) => {
+      const t = e.target;
+      const act = t.getAttribute('data-act');
+      const id = Number(t.getAttribute('data-id'));
+      if (!act) return;
+
+      if (act === 'adj') {
+        const delta = Number(t.getAttribute('data-delta'));
+        adjustQty(id, delta);
+        return;
+      }
+      if (act === 'del') {
+        delItem(id);
+        return;
+      }
+      if (act === 'openDetail') {
+        openDetail(id);
+        return;
+      }
+    });
+
+    el('itemsTable').addEventListener('change', (e) => {
+      const target = e.target;
+      const qtyInput = target.closest('input[data-act="setQty"]');
+      if (qtyInput) {
+        const id = Number(qtyInput.dataset.id);
+        const row = qtyInput.closest('tr');
+        const dateInput = row.querySelector('input[data-act="setDate"]');
+        const dateVal = dateInput?.value || today();
+        setQtyAndDate(id, Number(qtyInput.value||0), dateVal);
+        return;
+      }
+      const priceInput = target.closest('input[data-act="setPrice"]');
+      if (priceInput) {
+        const id = Number(priceInput.dataset.id);
+        const it = state.items.find(x=>x.id===id);
+        if (!it) return;
+        const v = Number(priceInput.value);
+        it.unit_cost = isNaN(v) ? undefined : v;
+        save();
+        if (state.detailItemId === id) renderTxModal(id);
+        return;
+      }
+      const dateInput = target.closest('input[data-act="setDate"]');
+      if (dateInput) {
+        const id = Number(dateInput.dataset.id);
+        const it = state.items.find(x=>x.id===id);
+        if (!it) return;
+        it.checkDate = dateInput.value;
+        save();
+        if (state.detailItemId === id) renderTxModal(id);
+        return;
+      }
+    });
+
+    function adjustQty(id, delta) {
+      const it = state.items.find(x=>x.id===id);
+      if (!it) return;
+      it.qty = Number(it.qty||0) + delta;
+      it.checkDate = it.checkDate || today();
+      state.tx.push({ id: nextId(state.tx), itemId: id, date: today(), qty: delta, note: delta>0?'수동입고':'수동출고' });
+      save(); renderItems();
+      if (state.detailItemId === id) renderTxModal(id);
     }
-    $('#count').textContent=String(arr.length);
-    $('#sumQty').textContent=String(sumQty);
-  }
+    function setQtyAndDate(id, qty, date) {
+      const it = state.items.find(x=>x.id===id);
+      if (!it) return;
+      const delta = qty - Number(it.qty||0);
+      it.qty = qty;
+      it.checkDate = date;
+      if (delta !== 0) {
+        state.tx.push({ id: nextId(state.tx), itemId: id, date, qty: delta, note: '수정' });
+      }
+      save(); renderItems();
+      if (state.detailItemId === id) renderTxModal(id);
+    }
+    function delItem(id) {
+      if (!confirm('삭제하시겠습니까?')) return;
+      state.items = state.items.filter(x=>x.id!==id);
+      state.tx = state.tx.filter(t=>t.itemId!==id);
+      save(); renderItems();
+      if (state.detailItemId === id) closeDetail();
+    }
 
-  // 모달/이력
-  function openDetail(idRaw){
-    detailItemId = String(idRaw);
-    renderTxModal(detailItemId);
-    $('#detailBackdrop').style.display='flex';
-    $('#detailClose').focus();
-  }
-  function closeDetail(){
-    detailItemId = null;
-    if (unsubTx) { unsubTx(); unsubTx=null; }
-    $('#detailBackdrop').style.display='none';
-  }
-  function renderTxModal(id){
-    const it = itemsCache.find(x=>String(x.id)===String(id)); if (!it) return;
-    $('#detailTitle').textContent = `이력 — ${it.name}`;
-    $('#detailMeta').textContent = `${it.labGroup||''} / ${it.lab||''} / ${it.loc||''} · 현재고: ${it.qty} · 확인일: ${it.checkDate||'-'}`;
-    $('#d_date').value = it.checkDate || today();
-    $('#d_qty').value = ''; $('#d_note').value = '';
+    // --- 상세 모달 / 입출고 ---
+    function openDetail(id) {
+      state.detailItemId = id;
+      renderTxModal(id);
+      el('detailModal').showModal();
+    }
+    function closeDetail() {
+      state.detailItemId = null;
+      el('detailModal').close();
+    }
+    el('closeDetail').addEventListener('click', closeDetail);
 
-    if (unsubTx) { unsubTx(); unsubTx=null; }
-    const qTx = query(collection(db,"tx"), where("itemId","==",String(id)), orderBy("date","desc"));
-    unsubTx = onSnapshot(qTx, (snap)=>{
-      const body = document.querySelector('#txTable tbody'); body.innerHTML='';
-      const rows = snap.docs.map(d=>d.data());
-      for (const t of rows){
+    function renderTxModal(id) {
+      const it = state.items.find(x=>x.id===id);
+      if (!it) return;
+      el('detailTitle').textContent = it.name;
+      el('detailMeta').textContent = `${it.labGroup}/${it.lab}`;
+      el('detailLoc').textContent = `@${it.loc}`;
+      el('detailQty').textContent = `현재고: ${it.qty||0}`;
+      el('detailPrice').textContent = `단가: ${typeof it.unit_cost==='number' ? it.unit_cost.toLocaleString() : '-'}`;
+
+      el('txDate').value = it.checkDate || today();
+      el('txQty').value = '';
+      el('txNote').value = '';
+
+      const body = el('txBody');
+      body.innerHTML = '';
+      const rows = state.tx.filter(t=>t.itemId===id)
+        .sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.id-a.id));
+      for (const r of rows) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${t.date||''}</td>
-          <td class="right">${t.qty>0?`+${t.qty}`:t.qty}</td>
-          <td>${t.note||''}</td>
+          <td>${r.date||''}</td>
+          <td class="right">${r.qty>0?'+':''}${r.qty||0}</td>
+          <td>${r.note||''}</td>
         `;
         body.appendChild(tr);
       }
-      if (!rows.length){
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td colspan="3" class="muted">이력이 없습니다</td>`;
-        body.appendChild(tr);
+    }
+
+    function commitTx(sign) {
+      const id = state.detailItemId;
+      const it = state.items.find(x=>x.id===id);
+      if (!it) return;
+      const date = el('txDate').value || today();
+      const qty = Number(el('txQty').value||0) * sign;
+      const note = el('txNote').value.trim();
+      if (!qty) return alert('수량을 입력하세요');
+
+      it.qty = Number(it.qty||0) + qty;
+      it.checkDate = date;
+      state.tx.push({ id: nextId(state.tx), itemId: id, date, qty, note: note || (qty>0?'입고':'출고') });
+
+      save(); renderItems(); renderTxModal(id);
+    }
+
+    el('txIn').addEventListener('click', () => commitTx(+1));
+    el('txOut').addEventListener('click', () => commitTx(-1));
+
+    function buildTxText(itemId) {
+      const it = state.items.find(x=>x.id===itemId);
+      const rows = state.tx
+        .filter(t=>t.itemId===itemId)
+        .sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.id-a.id));
+      const header = `${it.name} (${it.labGroup}/${it.lab} @${it.loc})`;
+      const lines = [header, '날짜 | 수량(+/-) | 비고'];
+      for (const t of rows) lines.push([t.date||'', String(t.qty||0), t.note||''].join(' | '));
+      return lines.join('\n');
+    }
+    el('copyTxBtn').addEventListener('click', async () => {
+      const text = buildTxText(state.detailItemId);
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('히스토리를 복사했습니다.');
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove();
+        alert('히스토리를 복사했습니다.');
       }
     });
-  }
 
-  // 이벤트
-  document.getElementById('itemsTable').addEventListener('click', async (e)=>{
-    const btn = e.target.closest('button[data-act]');
-    if (btn){
-      const id = btn.dataset.id;
-      const act = btn.dataset.act;
-      if (act==='adj'){
-        const row = btn.closest('tr');
-        const dateVal = row.querySelector('input[data-act="setDate"]')?.value || today();
-        await adjustQty(id, Number(btn.dataset.delta||0), dateVal, '');
-      } else if (act==='del'){
-        await deleteItem(id);
+    // --- 초기화 ---
+    load();
+    renderItems();
+
+    // --- Firebase Firestore 동기화 (토글) ---
+    // 모듈 스코프에서 save()를 오버라이드하므로 함수 참조 저장
+    let _saveLocalRef = save;
+    // 아래 변수들은 module 스코프에서 초기화됨
+  </script>
+
+  <!-- Firebase 모듈: 동기화 토글 시 로드 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getFirestore, collection, doc, getDocs, setDoc, onSnapshot, writeBatch }
+      from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const fbConfig = {
+      apiKey: "AIzaSyCTn9uq5vSbAn8SnxIlG_AwXvvz8_Is5R4",
+      authDomain: "gfc-inventory.firebaseapp.com",
+      projectId: "gfc-inventory",
+      storageBucket: "gfc-inventory.firebasestorage.app",
+      messagingSenderId: "402572923133",
+      appId: "1:402572923133:web:7a8bcbd02d2ce23939ee94"
+    };
+
+    let app=null, db=null, unsubItems=null, unsubTx=null, syncOn=false;
+
+    const itemsCol = () => collection(db, 'items');
+    const txCol = () => collection(db, 'tx');
+
+    function markUpdated(obj) {
+      obj._updatedAt = Date.now();
+      return obj;
+    }
+
+    // 원래 save를 참조
+    const rawSave = window.save;
+    window.save = async function() {
+      await rawSave();
+      if (!syncOn) return;
+      await pushAllToFirestore();
+    };
+
+    async function pushAllToFirestore() {
+      if (!db) return;
+      const batch = writeBatch(db);
+      for (const it of window.state.items) {
+        const d = { ...it };
+        markUpdated(d);
+        batch.set(doc(itemsCol(), String(it.id)), d);
       }
-      return;
+      for (const t of window.state.tx) {
+        const d = { ...t };
+        markUpdated(d);
+        batch.set(doc(txCol(), String(t.id)), d);
+      }
+      await batch.commit();
     }
-    if (e.target.closest('input[data-act="setQty"]') || e.target.closest('input[data-act="setDate"]')) return;
-    const row = e.target.closest('tr'); if (!row) return;
-    const id = row.getAttribute('data-id'); if (id) openDetail(id);
-  });
 
-  document.getElementById('itemsTable').addEventListener('change', async (e)=>{
-    const qtyInput = e.target.closest('input[data-act="setQty"]');
-    if (qtyInput){
-      const id = qtyInput.dataset.id;
-      const row = qtyInput.closest('tr');
-      const dateVal = row.querySelector('input[data-act="setDate"]')?.value || today();
-      await setQtyAndDate(id, Number(qtyInput.value||0), dateVal, '수량 직접설정');
-      return;
+    function mergeByUpdated(localArr, remoteArr) {
+      const map = new Map();
+      for (const x of localArr) map.set(String(x.id), x);
+      for (const r of remoteArr) {
+        const k = String(r.id);
+        const prev = map.get(k);
+        if (!prev) { map.set(k, r); continue; }
+        const lu = Number(prev._updatedAt||0);
+        const ru = Number(r._updatedAt||0);
+        map.set(k, ru >= lu ? r : prev);
+      }
+      return Array.from(map.values());
     }
-    const dateInput = e.target.closest('input[data-act="setDate"]');
-    if (dateInput){
-      const id = dateInput.dataset.id;
-      await updateDoc(doc(db, "items", String(id)), { checkDate: dateInput.value || '', updatedAt: serverTimestamp() });
-      if (detailItemId===String(id)) renderTxModal(id);
-      return;
+
+    async function startSync() {
+      if (syncOn) return;
+      app = initializeApp(fbConfig);
+      db = getFirestore(app);
+      syncOn = true;
+
+      const remoteItemsSnap = await getDocs(itemsCol());
+      const remoteTxSnap = await getDocs(txCol());
+      const remoteItems = remoteItemsSnap.docs.map(d=>d.data());
+      const remoteTx = remoteTxSnap.docs.map(d=>d.data());
+
+      window.state.items = mergeByUpdated(window.state.items, remoteItems).map(x=>({...x}));
+      window.state.tx = mergeByUpdated(window.state.tx, remoteTx).map(x=>({...x}));
+      window.localStorage.setItem('gfc_items', JSON.stringify(window.state.items));
+      window.localStorage.setItem('gfc_tx', JSON.stringify(window.state.tx));
+      window.dispatchEvent(new Event('storage')); // optional
+      window.document.getElementById('search').dispatchEvent(new Event('input')); // re-render
+      window.renderItems?.();
+
+      unsubItems = onSnapshot(itemsCol(), (snap) => {
+        const remote = snap.docs.map(d=>d.data());
+        window.state.items = mergeByUpdated(window.state.items, remote);
+        window.localStorage.setItem('gfc_items', JSON.stringify(window.state.items));
+        window.renderItems?.();
+        if (window.state.detailItemId != null) window.renderTxModal?.(window.state.detailItemId);
+      });
+      unsubTx = onSnapshot(txCol(), (snap) => {
+        const remote = snap.docs.map(d=>d.data());
+        window.state.tx = mergeByUpdated(window.state.tx, remote);
+        window.localStorage.setItem('gfc_tx', JSON.stringify(window.state.tx));
+        if (window.state.detailItemId != null) window.renderTxModal?.(window.state.detailItemId);
+      });
+
+      await pushAllToFirestore();
     }
-  });
 
-  document.getElementById('detailClose').addEventListener('click', closeDetail);
-  document.getElementById('detailClose2').addEventListener('click', closeDetail);
-  document.getElementById('detailBackdrop').addEventListener('click', (e)=>{
-    if (e.target.id === 'detailBackdrop') closeDetail();
-  });
-  document.getElementById('d_add_in').addEventListener('click', async ()=>{
-    const id = detailItemId; if (!id) return;
-    const dateVal = $('#d_date').value || today();
-    const qty = num($('#d_qty').value); if (!qty) return alert('수량을 입력하세요');
-    await adjustQty(id, Math.abs(qty), dateVal, $('#d_note').value.trim() || '입고');
-    $('#d_qty').value=''; $('#d_note').value='';
-  });
-  document.getElementById('d_add_out').addEventListener('click', async ()=>{
-    const id = detailItemId; if (!id) return;
-    const dateVal = $('#d_date').value || today();
-    const qty = num($('#d_qty').value); if (!qty) return alert('수량을 입력하세요');
-    await adjustQty(id, -Math.abs(qty), dateVal, $('#d_note').value.trim() || '출고');
-    $('#d_qty').value=''; $('#d_note').value='';
-  });
+    function stopSync() {
+      unsubItems?.(); unsubItems=null;
+      unsubTx?.(); unsubTx=null;
+      syncOn = false;
+    }
 
-  document.getElementById('addItemBtn').addEventListener('click', addItem);
-  document.getElementById('resetItemBtn').addEventListener('click', ()=>{
-    $('#name').value=''; $('#labGroup').value='';
-    $('#lab').innerHTML='<option value="">하위 Lab 선택</option>'; $('#lab').disabled=true;
-    $('#loc').value=''; $('#reorder').value=''; $('#checkDate').value='';
-  });
-  document.getElementById('quickApplyBtn').addEventListener('click', async ()=>{
-    const name = $('#quickName').value.trim().toLowerCase();
-    const delta = num($('#quickDelta').value);
-    const dateVal = $('#quickDate').value || today();
-    if (!name || !delta) return;
-    const found = itemsCache.find(x => (x.name||'').toLowerCase()===name);
-    if (!found) return alert('해당 품목을 찾을 수 없습니다');
-    await adjustQty(found.id, delta, dateVal, '빠른 조정');
-    $('#quickDelta').value='';
-  });
-  document.getElementById('btnExportCsv').addEventListener('click', exportCsv);
-  document.getElementById('fileCsv').addEventListener('change', async (e)=>{
-    const f = e.target.files?.[0]; if (!f) return;
-    await importCsv(f);
-    e.target.value='';
-  });
+    document.getElementById('fbSyncToggle').addEventListener('change', async (e) => {
+      if (e.target.checked) {
+        await startSync();
+        alert('Firebase 동기화를 시작했습니다.');
+      } else {
+        stopSync();
+        alert('Firebase 동기화를 중지했습니다.');
+      }
+    });
+  </script>
 
-  setupLabSelectorsPair('labGroup','lab');
-  subscribeItems();
-</script>
+  <script>
+    // 전역 노출 (다른 모듈에서 호출)
+    window.state = state;
+    window.renderItems = renderItems;
+    window.renderTxModal = renderTxModal;
+  </script>
 </body>
 </html>
