@@ -1,609 +1,211 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <title>GFC 재고관리</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GFC생명과학 연구소 소모품 재고관리</title>
   <style>
-    :root { color-scheme: light dark; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Arial, sans-serif; margin: 24px; }
-    h1 { margin: 0 0 12px; font-size: 22px; }
-    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
-    input, select, button { padding: 8px; font-size: 14px; }
-    input[type=number] { width: 120px; }
-    input[type=date] { width: 175px; }
-    input[type=text] { width: 220px; }
-    .grow { flex: 1; min-width: 220px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background: #f4f4f4; user-select: none; }
-    tfoot td { font-weight: 600; background: #fafafa; }
-    .muted { opacity: .7; font-size: 12px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif; margin: 0; padding: 0; }
+    header, footer { padding: 12px 16px; background: #0f172a; color: #fff; }
+    main { padding: 16px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    select, input, button { font-size: 14px; padding: 6px 8px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #e5e7eb; padding: 8px; text-align: left; }
+    th { background: #f8fafc; position: sticky; top: 0; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; background: #e2e8f0; font-size: 12px; }
+    .danger { color: #b91c1c; }
+    .muted { color: #64748b; }
     .right { text-align: right; }
+    .row-click { cursor: pointer; }
+    .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+    .toast.show { opacity: 0.95; }
+    .hidden { display: none; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; align-items: center; justify-content: center; }
+    .modal { background: #fff; border-radius: 8px; max-width: 860px; width: calc(100% - 24px); padding: 16px; }
+    .modal h3 { margin-top: 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .full { grid-column: 1 / -1; }
+    .actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .pill { display: inline-block; border: 1px solid #e5e7eb; background: #f8fafc; padding: 4px 8px; border-radius: 999px; font-size: 12px; margin-right: 6px; }
+    .tx-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .tx-table th, .tx-table td { border-bottom: 1px solid #e5e7eb; padding: 6px 8px; }
     .nowrap { white-space: nowrap; }
-    .danger { background: #d9534f; color: #fff; border: none; }
-    .primary { background: #0d6efd; color: #fff; border: none; }
-    .secondary { background: #6c757d; color: #fff; border: none; }
-    .ghost { background: transparent; border: 1px solid #ccc; }
-    .badge { display: inline-block; padding: 2px 6px; font-size: 12px; border-radius: 4px; background: #eee; }
-    .qtybar button { padding: 6px 8px; }
-    .clickable { cursor: pointer; }
-    .flex { display: flex; gap: 8px; align-items: center; }
-    .flat { list-style: none; padding: 0; margin: 0; }
-    .flat li { padding: 4px 0; border-bottom: 1px dashed #e5e5e5; }
-    dialog { border: none; border-radius: 8px; padding: 0; max-width: 800px; width: 90vw; }
-    .modal { padding: 16px 16px 12px; }
-    .modal h3 { margin: 0 0 8px; }
-    .modal .actions { display: flex; gap: 8px; justify-content: flex-end; }
-    .pill { border-radius: 999px; padding: 6px 10px; font-size: 12px; border: 1px solid #ddd; background: #fafafa; }
-    .tooltip { font-size: 12px; color: #666; }
-    @media (max-width: 640px) {
-      input[type=text], select { width: 100%; }
-    }
   </style>
 </head>
 <body>
-  <h1>GFC생명과학 연구소 소모품 재고관리</h1>
+  <header>
+    <h1>GFC생명과학 연구소 소모품 재고관리</h1>
+  </header>
 
-  <!-- 상단 툴바 -->
-  <div class="row">
-    <input id="search" type="text" class="grow" placeholder="품목명/위치/메모 검색">
-    <select id="rootLab">
-      <option value="">상위 연구소(전체)</option>
-      <option>GBC 연구소</option>
-      <option>HMC 연구소</option>
-      <option>RNA 치료제 연구소</option>
-    </select>
-    <select id="childLab">
-      <option value="">하위 Lab 선택</option>
-    </select>
-    <select id="filterStock">
-      <option value="all">전체</option>
-      <option value="low">재고부족만</option>
-    </select>
+  <main>
+    <!-- 필터/도구바 -->
+    <div class="toolbar">
+      <label>상위 연구소
+        <select id="topGroup">
+          <option value="">전체</option>
+          <option value="GBC 연구소">GBC 연구소</option>
+          <option value="HMC 연구소">HMC 연구소</option>
+          <option value="RNA 치료제 연구소">RNA 치료제 연구소</option>
+        </select>
+      </label>
 
-    <button id="exportCSV" class="ghost">재고 CSV</button>
-    <label class="ghost" style="padding:7px; cursor:pointer">
-      재고 CSV 가져오기
-      <input id="importCSV" type="file" accept=".csv" style="display:none">
-    </label>
+      <label>하위 Lab
+        <select id="subLab">
+          <option value="">전체</option>
+        </select>
+      </label>
 
-    <button id="copyTextBtn" class="ghost">텍스트 복사</button>
-    <label class="ghost" style="padding:7px; cursor:pointer">
-      <input id="fbSyncToggle" type="checkbox" style="vertical-align:middle;margin-right:6px">
-      Firebase 동기화
-    </label>
-  </div>
+      <label>
+        <input type="checkbox" id="onlyLow" />
+        재고부족만
+      </label>
 
-  <!-- 품목 등록 -->
-  <div class="row">
-    <span class="badge">품목 등록</span>
-    <input id="itemName" type="text" placeholder="품목명">
-    <select id="itemRootLab">
-      <option value="">상위연구소</option>
-      <option>GBC 연구소</option>
-      <option>HMC 연구소</option>
-      <option>RNA 치료제 연구소</option>
-    </select>
-    <select id="itemChildLab">
-      <option value="">하위Lab</option>
-    </select>
-    <input id="itemLoc" type="text" placeholder="위치">
-    <input id="reorderPoint" type="number" step="1" placeholder="재고경고수량">
-    <input id="unitCost" type="number" step="0.01" placeholder="단가(원)">
-    <input id="checkDate" type="date" placeholder="재고 확인 날짜">
-    <button id="resetItemBtn" class="ghost">폼 초기화</button>
-    <button id="addItemBtn" class="primary">적용</button>
-  </div>
+      <input type="search" id="search" placeholder="품목명/위치 검색" />
 
-  <!-- 목록 -->
-  <table id="itemsTable">
-    <thead>
-      <tr>
-        <th>품목명</th>
-        <th>상위연구소</th>
-        <th>하위Lab</th>
-        <th>위치</th>
-        <th class="right">현재고</th>
-        <th class="right">단가(원)</th>
-        <th>재고 확인 날짜</th>
-        <th>작업</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-    <tfoot>
-      <tr>
-        <td colspan="8">
-          <span>총 품목 <span id="countItems">0</span></span>
-          <span style="margin-left:16px">재고합계 <span id="sumQty">0</span></span>
-        </td>
-      </tr>
-    </tfoot>
-  </table>
+      <span id="liveBadge" class="badge muted">실시간 동기화 준비</span>
 
-  <p class="muted">Tip: 품목 행을 클릭하면 해당 품목의 입고/출고 이력 모달이 열립니다. 모달에서 바로 입고/출고를 기록하면 현재고와 날짜가 업데이트됩니다.</p>
+      <button id="exportCsvBtn">재고 CSV</button>
+      <input type="file" id="importCsvInput" accept=".csv" class="hidden" />
+      <button id="importCsvBtn">재고 CSV 가져오기</button>
+      <button id="copyTextBtn">텍스트 복사</button>
+    </div>
 
-  <!-- 상세 모달 -->
-  <dialog id="detailModal">
+    <!-- 등록/수정 폼 -->
+    <form id="itemForm" class="grid" autocomplete="off">
+      <div class="full">
+        <strong>품목 등록</strong>
+        <button type="button" id="formResetBtn" class="badge">폼 초기화</button>
+      </div>
+
+      <label>품목명
+        <input name="name" required />
+      </label>
+
+      <label>상위연구소
+        <select name="group" id="itemRootLab" required>
+          <option value="GBC 연구소">GBC 연구소</option>
+          <option value="HMC 연구소">HMC 연구소</option>
+          <option value="RNA 치료제 연구소">RNA 치료제 연구소</option>
+        </select>
+      </label>
+
+      <label>하위Lab
+        <select name="lab" id="itemChildLab">
+          <option value="">선택</option>
+        </select>
+      </label>
+
+      <label>위치
+        <input name="location" />
+      </label>
+
+      <label>현재고
+        <input name="qty" type="number" step="1" value="0" />
+      </label>
+
+      <label>단가(원)
+        <input name="unit_cost" type="number" step="1" value="0" />
+      </label>
+
+      <label>재고 확인 날짜
+        <input name="checked_at" type="date" />
+      </label>
+
+      <div class="actions full">
+        <button type="submit">적용</button>
+      </div>
+    </form>
+
+    <!-- 테이블 -->
+    <p class="muted">Tip: 행을 클릭하면 해당 품목의 입출고 이력과 상세정보 모달이 열린다.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>상세</th>
+          <th>품목명</th>
+          <th>상위연구소</th>
+          <th>하위Lab</th>
+          <th>위치</th>
+          <th class="right">현재고</th>
+          <th class="right">단가(원)</th>
+          <th>재고 확인 날짜</th>
+          <th>작업</th>
+        </tr>
+      </thead>
+      <tbody id="itemsTbody"></tbody>
+    </table>
+
+    <div style="margin-top:8px; display:flex; gap:16px;">
+      <div>총 품목 <strong id="totalCount">0</strong></div>
+      <div>재고합계 <strong id="totalQty">0</strong></div>
+    </div>
+  </main>
+
+  <!-- 상세/로그 모달 -->
+  <div id="detailModal" class="modal-backdrop">
     <div class="modal">
       <h3 id="detailTitle">상세</h3>
-      <div class="row">
-        <span class="pill" id="detailMeta"></span>
-        <span class="pill" id="detailLoc"></span>
-        <span class="pill" id="detailQty"></span>
-        <span class="pill" id="detailPrice"></span>
+      <div class="full" style="margin:8px 0;">
+        <span id="detailMeta" class="pill">-</span>
+        <span id="detailLoc" class="pill">-</span>
+        <span id="detailQty" class="pill">-</span>
+        <span id="detailPrice" class="pill">-</span>
+        <span id="detailChecked" class="pill">-</span>
       </div>
 
-      <div class="row">
-        <button id="txIn" class="secondary">입고</button>
-        <button id="txOut" class="secondary">출고</button>
-        <input id="txDate" type="date" class="nowrap">
-        <input id="txQty" type="number" step="1" placeholder="수량">
-        <input id="txNote" type="text" class="grow" placeholder="비고(메모)">
+      <div class="grid" style="align-items:end; margin-top:4px;">
+        <div>
+          <label class="nowrap">날짜
+            <input id="txDate" type="date" />
+          </label>
+        </div>
+        <div>
+          <label class="nowrap">수량(+/-)
+            <input id="txQty" type="number" step="1" />
+          </label>
+        </div>
+        <div class="full">
+          <label class="nowrap">비고
+            <input id="txMemo" />
+          </label>
+        </div>
+        <div class="actions full">
+          <button type="button" id="txIn" class="badge">입고</button>
+          <button type="button" id="txOut" class="badge">출고</button>
+          <button type="button" id="copyTxBtn" class="badge">히스토리 복사</button>
+          <button type="button" id="closeDetail" class="badge">닫기</button>
+        </div>
       </div>
 
-      <div class="row">
-        <button id="copyTxBtn" class="ghost">히스토리 복사</button>
-      </div>
-
-      <div>
-        <table style="margin-top:8px">
-          <thead>
-            <tr>
-              <th>날짜</th>
-              <th class="right">수량(+/-)</th>
-              <th>비고</th>
-            </tr>
-          </thead>
-          <tbody id="txBody"></tbody>
-        </table>
-      </div>
-
-      <div class="actions" style="margin-top:10px">
-        <button id="closeDetail" class="ghost">닫기</button>
-      </div>
+      <table class="tx-table">
+        <thead>
+          <tr>
+            <th class="nowrap">날짜</th>
+            <th class="right nowrap">수량(+/-)</th>
+            <th class="nowrap">비고</th>
+            <th class="nowrap">기록시각</th>
+          </tr>
+        </thead>
+        <tbody id="txBody"></tbody>
+      </table>
     </div>
-  </dialog>
+  </div>
 
-  <script>
-    // --- 상태 및 유틸 ---
-    const state = {
-      items: [],
-      tx: [],
-      detailItemId: null,
-      labsMap: {
-        "GBC 연구소": ["마이크로바이옴Lab", "융합기술Lab", "재생바이오Lab"],
-        "HMC 연구소": ["활성연구Lab", "식물세포연구Lab", "제형연구Lab", "신소재연구Lab"],
-        "RNA 치료제 연구소": ["RNA Lab"]
-      }
-    };
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    const el = id => document.getElementById(id);
-    const today = () => new Date().toISOString().slice(0,10);
-    const nextId = arr => (arr.reduce((m,x)=>Math.max(m, Number(x.id||0)), 0) + 1);
-
-    function save() {
-      localStorage.setItem('gfc_items', JSON.stringify(state.items));
-      localStorage.setItem('gfc_tx', JSON.stringify(state.tx));
-    }
-    function load() {
-      try {
-        state.items = JSON.parse(localStorage.getItem('gfc_items')||'[]');
-        state.tx = JSON.parse(localStorage.getItem('gfc_tx')||'[]');
-      } catch { state.items = []; state.tx = []; }
-    }
-
-    // --- Lab 종속 셀렉트 ---
-    function syncChildOptions(rootSel, childSel) {
-      const root = rootSel.value;
-      const opts = root ? (state.labsMap[root] || []) : [];
-      childSel.innerHTML = '<option value="">하위Lab</option>';
-      for (const name of opts) {
-        const o = document.createElement('option');
-        o.textContent = name; o.value = name;
-        childSel.appendChild(o);
-      }
-    }
-
-    el('itemRootLab').addEventListener('change', () => syncChildOptions(el('itemRootLab'), el('itemChildLab')));
-    el('rootLab').addEventListener('change', () => {
-      syncChildOptions(el('rootLab'), el('childLab'));
-      renderItems();
-    });
-    el('childLab').addEventListener('change', renderItems);
-    el('filterStock').addEventListener('change', renderItems);
-
-    // --- 검색 ---
-    el('search').addEventListener('input', renderItems);
-
-    // --- CSV ---
-    function csvCell(v) {
-      if (v == null) return '';
-      const s = String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
-    }
-    function downloadCSV(text, filename) {
-      const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    }
-    function exportItemsCSV() {
-      const headers = ['id','name','labGroup','lab','loc','reorder','qty','unit_cost','checkDate'];
-      const rows = [headers.join(',')];
-      for (const x of state.items) {
-        rows.push([x.id, x.name, x.labGroup, x.lab, x.loc, x.reorder,
-                   x.qty||0,
-                   (typeof x.unit_cost==='number'? x.unit_cost : ''),
-                   x.checkDate].map(csvCell).join(','));
-      }
-      downloadCSV(rows.join('\n'), 'items.csv');
-    }
-    el('exportCSV').addEventListener('click', exportItemsCSV);
-
-    el('importCSV').addEventListener('change', async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const text = await file.text();
-      const lines = text.split(/\r?\n/).filter(Boolean);
-      if (!lines.length) return;
-      const head = lines.shift().split(',');
-      const idx = name => head.findIndex(h => h.trim()===name);
-      const idI = idx('id'), nameI = idx('name'), labGroupI = idx('labGroup'), labI = idx('lab');
-      const locI = idx('loc'), reorderI = idx('reorder'), qtyI = idx('qty'), unitCostI = idx('unit_cost'), cdI = idx('checkDate');
-      const items = [];
-      for (const line of lines) {
-        const cols = parseCsvLine(line);
-        const it = {
-          id: Number(cols[idI] || 0) || nextId(items),
-          name: cols[nameI],
-          labGroup: cols[labGroupI],
-          lab: cols[labI],
-          loc: cols[locI],
-          reorder: cols[reorderI] ? Number(cols[reorderI]) : undefined,
-          qty: Number(cols[qtyI] || 0),
-          unit_cost: cols[unitCostI] ? Number(cols[unitCostI]) : undefined,
-          checkDate: cols[cdI] || ''
-        };
-        items.push(it);
-      }
-      // 단순 병합 (id 기준 교체)
-      const map = new Map(state.items.map(x=>[String(x.id), x]));
-      for (const it of items) map.set(String(it.id), it);
-      state.items = Array.from(map.values());
-      save(); renderItems();
-      e.target.value = '';
-      alert('CSV 가져오기 완료');
-    });
-
-    function parseCsvLine(line) {
-      const out = []; let cur = ''; let q = false;
-      for (let i=0;i<line.length;i++) {
-        const c = line[i];
-        if (q) {
-          if (c === '"') {
-            if (line[i+1] === '"') { cur += '"'; i++; }
-            else { q = false; }
-          } else cur += c;
-        } else {
-          if (c === ',') { out.push(cur); cur = ''; }
-          else if (c === '"') { q = true; }
-          else cur += c;
-        }
-      }
-      out.push(cur);
-      return out;
-    }
-
-    // --- 품목 추가/수정 ---
-    el('resetItemBtn').addEventListener('click', () => {
-      el('itemName').value = '';
-      el('itemRootLab').value = '';
-      syncChildOptions(el('itemRootLab'), el('itemChildLab'));
-      el('itemLoc').value = '';
-      el('reorderPoint').value = '';
-      el('unitCost').value = '';
-      el('checkDate').value = '';
-    });
-
-    el('addItemBtn').addEventListener('click', () => {
-      const name = el('itemName').value.trim();
-      const labGroup = el('itemRootLab').value;
-      const lab = el('itemChildLab').value;
-      const loc = el('itemLoc').value.trim();
-      const reorder = el('reorderPoint').value.trim() ? Number(el('reorderPoint').value) : undefined;
-      const unit_cost = el('unitCost').value.trim() ? Number(el('unitCost').value) : undefined;
-      const checkDate = el('checkDate').value;
-
-      if (!name) return alert('품목명을 입력하세요');
-      if (!labGroup || !lab) return alert('Lab를 선택하세요');
-
-      const dup = state.items.find(x => x.name===name && x.labGroup===labGroup && x.lab===lab && x.loc===loc);
-      if (dup) return alert('같은 장소의 동일 품목이 이미 있습니다');
-
-      const it = { id: nextId(state.items), name, labGroup, lab, loc, reorder, qty: 0, unit_cost, checkDate };
-      state.items.push(it);
-      save(); renderItems();
-    });
-
-    // --- 복붙용 텍스트 ---
-    function filteredItems() {
-      const kw = el('search').value.trim().toLowerCase();
-      const root = el('rootLab').value;
-      const child = el('childLab').value;
-      const stockFilter = el('filterStock').value;
-
-      return state.items.filter(it => {
-        if (root && it.labGroup !== root) return false;
-        if (child && it.lab !== child) return false;
-        if (stockFilter === 'low' && (typeof it.reorder === 'number') && (Number(it.qty||0) > it.reorder)) return false;
-        if (!kw) return true;
-        const hay = [
-          it.name, it.labGroup, it.lab, it.loc,
-          String(it.qty||0), String(it.reorder??''), it.checkDate||'',
-        ].join(' ').toLowerCase();
-        return hay.includes(kw);
-      });
-    }
-
-    function buildPlainTextForClipboard(items) {
-      const lines = [];
-      lines.push('품목 | LabGroup/Lab | 위치 | 수량 | 단가(원) | 최종재고일 | 비고');
-      for (const it of items) {
-        lines.push([
-          it.name,
-          `${it.labGroup}/${it.lab}`,
-          it.loc,
-          String(it.qty||0),
-          (typeof it.unit_cost === 'number' ? it.unit_cost.toFixed(2) : ''),
-          it.checkDate || '',
-          ''
-        ].join(' | '));
-      }
-      return lines.join('\n');
-    }
-
-    el('copyTextBtn').addEventListener('click', async () => {
-      const text = buildPlainTextForClipboard(filteredItems());
-      try {
-        await navigator.clipboard.writeText(text);
-        alert('복사되었습니다. 메모장에 붙여넣기 하세요.');
-      } catch {
-        const ta = document.createElement('textarea');
-        ta.value = text; document.body.appendChild(ta);
-        ta.select(); document.execCommand('copy'); ta.remove();
-        alert('복사되었습니다. 메모장에 붙여넣기 하세요.');
-      }
-    });
-
-    // --- 렌더링 ---
-    function renderItems() {
-      const tbody = el('itemsTable').querySelector('tbody');
-      tbody.innerHTML = '';
-      const arr = filteredItems();
-      let sum = 0;
-      for (const it of arr) {
-        sum += Number(it.qty||0);
-        const tr = document.createElement('tr');
-        const warn = (typeof it.reorder==='number' && Number(it.qty||0) <= it.reorder) ? '<span class="badge">재고부족</span>' : '';
-        tr.innerHTML = `
-          <td class="clickable" data-act="openDetail" data-id="${it.id}">${it.name} ${warn}</td>
-          <td>${it.labGroup}</td>
-          <td>${it.lab}</td>
-          <td>${it.loc}</td>
-          <td class="right">
-            <input data-act="setQty" data-id="${it.id}" type="number" step="1"
-                   value="${it.qty||0}" style="width:100px;text-align:right">
-          </td>
-          <td class="right">
-            <input data-act="setPrice" data-id="${it.id}" type="number" step="0.01"
-                   value="${it.unit_cost ?? ''}" style="width:110px;text-align:right" placeholder="0.00">
-          </td>
-          <td>
-            <input data-act="setDate" data-id="${it.id}" type="date" value="${it.checkDate||''}">
-          </td>
-          <td>
-            <div class="qtybar">
-              <button data-act="adj" data-id="${it.id}" data-delta="10">+10</button>
-              <button data-act="adj" data-id="${it.id}" data-delta="1">+1</button>
-              <button data-act="adj" data-id="${it.id}" data-delta="-1">-1</button>
-              <button data-act="adj" data-id="${it.id}" data-delta="-10">-10</button>
-              <button data-act="openDetail" data-id="${it.id}" class="secondary">히스토리</button>
-              <button data-act="del" data-id="${it.id}" class="danger">삭제</button>
-            </div>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      }
-      el('sumQty').textContent = String(sum);
-      el('countItems').textContent = String(arr.length);
-    }
-
-    el('itemsTable').addEventListener('click', (e) => {
-      const t = e.target;
-      const act = t.getAttribute('data-act');
-      const id = Number(t.getAttribute('data-id'));
-      if (!act) return;
-
-      if (act === 'adj') {
-        const delta = Number(t.getAttribute('data-delta'));
-        adjustQty(id, delta);
-        return;
-      }
-      if (act === 'del') {
-        delItem(id);
-        return;
-      }
-      if (act === 'openDetail') {
-        openDetail(id);
-        return;
-      }
-    });
-
-    el('itemsTable').addEventListener('change', (e) => {
-      const target = e.target;
-      const qtyInput = target.closest('input[data-act="setQty"]');
-      if (qtyInput) {
-        const id = Number(qtyInput.dataset.id);
-        const row = qtyInput.closest('tr');
-        const dateInput = row.querySelector('input[data-act="setDate"]');
-        const dateVal = dateInput?.value || today();
-        setQtyAndDate(id, Number(qtyInput.value||0), dateVal);
-        return;
-      }
-      const priceInput = target.closest('input[data-act="setPrice"]');
-      if (priceInput) {
-        const id = Number(priceInput.dataset.id);
-        const it = state.items.find(x=>x.id===id);
-        if (!it) return;
-        const v = Number(priceInput.value);
-        it.unit_cost = isNaN(v) ? undefined : v;
-        save();
-        if (state.detailItemId === id) renderTxModal(id);
-        return;
-      }
-      const dateInput = target.closest('input[data-act="setDate"]');
-      if (dateInput) {
-        const id = Number(dateInput.dataset.id);
-        const it = state.items.find(x=>x.id===id);
-        if (!it) return;
-        it.checkDate = dateInput.value;
-        save();
-        if (state.detailItemId === id) renderTxModal(id);
-        return;
-      }
-    });
-
-    function adjustQty(id, delta) {
-      const it = state.items.find(x=>x.id===id);
-      if (!it) return;
-      it.qty = Number(it.qty||0) + delta;
-      it.checkDate = it.checkDate || today();
-      state.tx.push({ id: nextId(state.tx), itemId: id, date: today(), qty: delta, note: delta>0?'수동입고':'수동출고' });
-      save(); renderItems();
-      if (state.detailItemId === id) renderTxModal(id);
-    }
-    function setQtyAndDate(id, qty, date) {
-      const it = state.items.find(x=>x.id===id);
-      if (!it) return;
-      const delta = qty - Number(it.qty||0);
-      it.qty = qty;
-      it.checkDate = date;
-      if (delta !== 0) {
-        state.tx.push({ id: nextId(state.tx), itemId: id, date, qty: delta, note: '수정' });
-      }
-      save(); renderItems();
-      if (state.detailItemId === id) renderTxModal(id);
-    }
-    function delItem(id) {
-      if (!confirm('삭제하시겠습니까?')) return;
-      state.items = state.items.filter(x=>x.id!==id);
-      state.tx = state.tx.filter(t=>t.itemId!==id);
-      save(); renderItems();
-      if (state.detailItemId === id) closeDetail();
-    }
-
-    // --- 상세 모달 / 입출고 ---
-    function openDetail(id) {
-      state.detailItemId = id;
-      renderTxModal(id);
-      el('detailModal').showModal();
-    }
-    function closeDetail() {
-      state.detailItemId = null;
-      el('detailModal').close();
-    }
-    el('closeDetail').addEventListener('click', closeDetail);
-
-    function renderTxModal(id) {
-      const it = state.items.find(x=>x.id===id);
-      if (!it) return;
-      el('detailTitle').textContent = it.name;
-      el('detailMeta').textContent = `${it.labGroup}/${it.lab}`;
-      el('detailLoc').textContent = `@${it.loc}`;
-      el('detailQty').textContent = `현재고: ${it.qty||0}`;
-      el('detailPrice').textContent = `단가: ${typeof it.unit_cost==='number' ? it.unit_cost.toLocaleString() : '-'}`;
-
-      el('txDate').value = it.checkDate || today();
-      el('txQty').value = '';
-      el('txNote').value = '';
-
-      const body = el('txBody');
-      body.innerHTML = '';
-      const rows = state.tx.filter(t=>t.itemId===id)
-        .sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.id-a.id));
-      for (const r of rows) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${r.date||''}</td>
-          <td class="right">${r.qty>0?'+':''}${r.qty||0}</td>
-          <td>${r.note||''}</td>
-        `;
-        body.appendChild(tr);
-      }
-    }
-
-    function commitTx(sign) {
-      const id = state.detailItemId;
-      const it = state.items.find(x=>x.id===id);
-      if (!it) return;
-      const date = el('txDate').value || today();
-      const qty = Number(el('txQty').value||0) * sign;
-      const note = el('txNote').value.trim();
-      if (!qty) return alert('수량을 입력하세요');
-
-      it.qty = Number(it.qty||0) + qty;
-      it.checkDate = date;
-      state.tx.push({ id: nextId(state.tx), itemId: id, date, qty, note: note || (qty>0?'입고':'출고') });
-
-      save(); renderItems(); renderTxModal(id);
-    }
-
-    el('txIn').addEventListener('click', () => commitTx(+1));
-    el('txOut').addEventListener('click', () => commitTx(-1));
-
-    function buildTxText(itemId) {
-      const it = state.items.find(x=>x.id===itemId);
-      const rows = state.tx
-        .filter(t=>t.itemId===itemId)
-        .sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.id-a.id));
-      const header = `${it.name} (${it.labGroup}/${it.lab} @${it.loc})`;
-      const lines = [header, '날짜 | 수량(+/-) | 비고'];
-      for (const t of rows) lines.push([t.date||'', String(t.qty||0), t.note||''].join(' | '));
-      return lines.join('\n');
-    }
-    el('copyTxBtn').addEventListener('click', async () => {
-      const text = buildTxText(state.detailItemId);
-      try {
-        await navigator.clipboard.writeText(text);
-        alert('히스토리를 복사했습니다.');
-      } catch {
-        const ta = document.createElement('textarea');
-        ta.value = text; document.body.appendChild(ta);
-        ta.select(); document.execCommand('copy'); ta.remove();
-        alert('히스토리를 복사했습니다.');
-      }
-    });
-
-    // --- 초기화 ---
-    load();
-    renderItems();
-
-    // --- Firebase Firestore 동기화 (토글) ---
-    // 모듈 스코프에서 save()를 오버라이드하므로 함수 참조 저장
-    let _saveLocalRef = save;
-    // 아래 변수들은 module 스코프에서 초기화됨
-  </script>
-
-  <!-- Firebase 모듈: 동기화 토글 시 로드 -->
+  <!-- Firebase + 앱 스크립트 -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getFirestore, collection, doc, getDocs, setDoc, onSnapshot, writeBatch }
-      from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    // Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
+      serverTimestamp, runTransaction, query, orderBy
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    const fbConfig = {
+    // 0) 프로젝트의 Firebase 설정으로 교체
+    const firebaseConfig = {
       apiKey: "AIzaSyCTn9uq5vSbAn8SnxIlG_AwXvvz8_Is5R4",
       authDomain: "gfc-inventory.firebaseapp.com",
       projectId: "gfc-inventory",
@@ -612,112 +214,508 @@
       appId: "1:402572923133:web:7a8bcbd02d2ce23939ee94"
     };
 
-    let app=null, db=null, unsubItems=null, unsubTx=null, syncOn=false;
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    const itemsCol = () => collection(db, 'items');
-    const txCol = () => collection(db, 'tx');
-
-    function markUpdated(obj) {
-      obj._updatedAt = Date.now();
-      return obj;
-    }
-
-    // 원래 save를 참조
-    const rawSave = window.save;
-    window.save = async function() {
-      await rawSave();
-      if (!syncOn) return;
-      await pushAllToFirestore();
+    // 1) Lab 의존 옵션 맵
+    const labsMap = {
+      "GBC 연구소": ["마이크로바이옴Lab", "융합기술 Lab", "재생바이오lab"],
+      "HMC 연구소": ["활성연구 Lab", "식물세포연구Lab", "제형연구 Lab", "신소재연구 Lab"],
+      "RNA 치료제 연구소": ["RNA Lab"]
     };
 
-    async function pushAllToFirestore() {
-      if (!db) return;
-      const batch = writeBatch(db);
-      for (const it of window.state.items) {
-        const d = { ...it };
-        markUpdated(d);
-        batch.set(doc(itemsCol(), String(it.id)), d);
-      }
-      for (const t of window.state.tx) {
-        const d = { ...t };
-        markUpdated(d);
-        batch.set(doc(txCol(), String(t.id)), d);
-      }
-      await batch.commit();
+    // 2) DOM 헬퍼
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    const topGroup = $("#topGroup");
+    const subLab = $("#subLab");
+    const onlyLow = $("#onlyLow");
+    const search = $("#search");
+    const liveBadge = $("#liveBadge");
+    const itemsTbody = $("#itemsTbody");
+    const totalCount = $("#totalCount");
+    const totalQty = $("#totalQty");
+
+    const itemForm = $("#itemForm");
+    const formResetBtn = $("#formResetBtn");
+    const itemRootLab = $("#itemRootLab");
+    const itemChildLab = $("#itemChildLab");
+
+    // 상세 모달
+    const detailModal = $("#detailModal");
+    const detailTitle = $("#detailTitle");
+    const detailMeta = $("#detailMeta");
+    const detailLoc = $("#detailLoc");
+    const detailQty = $("#detailQty");
+    const detailPrice = $("#detailPrice");
+    const detailChecked = $("#detailChecked");
+    const txBody = $("#txBody");
+    const txDate = $("#txDate");
+    const txQty = $("#txQty");
+    const txMemo = $("#txMemo");
+    const txIn = $("#txIn");
+    const txOut = $("#txOut");
+    const copyTxBtn = $("#copyTxBtn");
+    const closeDetail = $("#closeDetail");
+
+    const toast = $("#toast");
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 1600);
     }
 
-    function mergeByUpdated(localArr, remoteArr) {
-      const map = new Map();
-      for (const x of localArr) map.set(String(x.id), x);
-      for (const r of remoteArr) {
-        const k = String(r.id);
-        const prev = map.get(k);
-        if (!prev) { map.set(k, r); continue; }
-        const lu = Number(prev._updatedAt||0);
-        const ru = Number(r._updatedAt||0);
-        map.set(k, ru >= lu ? r : prev);
+    // 3) Lab 옵션 동기화
+    function syncChildOptions(rootValue, childSelect, includeAll = false) {
+      const options = labsMap[rootValue] || [];
+      childSelect.innerHTML = "";
+      if (includeAll) {
+        const o = document.createElement("option");
+        o.value = "";
+        o.textContent = "전체";
+        childSelect.appendChild(o);
       }
-      return Array.from(map.values());
+      for (const name of options) {
+        const o = document.createElement("option");
+        o.value = name;
+        o.textContent = name;
+        childSelect.appendChild(o);
+      }
     }
 
-    async function startSync() {
-      if (syncOn) return;
-      app = initializeApp(fbConfig);
-      db = getFirestore(app);
-      syncOn = true;
+    // 초기 필터 하위Lab 전체 옵션은 상위 선택 시에 주입
+    topGroup.addEventListener("change", () => {
+      syncChildOptions(topGroup.value, subLab, true);
+      applyFilters(); renderTable();
+    });
+    // 폼의 하위 Lab 옵션도 상위 선택 시에 주입
+    itemRootLab.addEventListener("change", () => {
+      syncChildOptions(itemRootLab.value, itemChildLab, false);
+    });
+    // 초기 폼 옵션 프리셋
+    syncChildOptions(itemRootLab.value, itemChildLab, false);
 
-      const remoteItemsSnap = await getDocs(itemsCol());
-      const remoteTxSnap = await getDocs(txCol());
-      const remoteItems = remoteItemsSnap.docs.map(d=>d.data());
-      const remoteTx = remoteTxSnap.docs.map(d=>d.data());
+    // 4) Firestore 레퍼런스
+    const itemsCol = collection(db, "inventory_items");
+    const itemHistoryCol = (itemId) => collection(doc(itemsCol, itemId), "history");
 
-      window.state.items = mergeByUpdated(window.state.items, remoteItems).map(x=>({...x}));
-      window.state.tx = mergeByUpdated(window.state.tx, remoteTx).map(x=>({...x}));
-      window.localStorage.setItem('gfc_items', JSON.stringify(window.state.items));
-      window.localStorage.setItem('gfc_tx', JSON.stringify(window.state.tx));
-      window.dispatchEvent(new Event('storage')); // optional
-      window.document.getElementById('search').dispatchEvent(new Event('input')); // re-render
-      window.renderItems?.();
+    // 5) 상태
+    const state = {
+      raw: [],
+      view: [],
+      detailItemId: null,
+      unsubHistory: null, // 현재 상세 아이템의 히스토리 리스너
+      historiesCache: new Map() // itemId -> array
+    };
 
-      unsubItems = onSnapshot(itemsCol(), (snap) => {
-        const remote = snap.docs.map(d=>d.data());
-        window.state.items = mergeByUpdated(window.state.items, remote);
-        window.localStorage.setItem('gfc_items', JSON.stringify(window.state.items));
-        window.renderItems?.();
-        if (window.state.detailItemId != null) window.renderTxModal?.(window.state.detailItemId);
+    // 6) 필터 적용
+    function applyFilters() {
+      const q = search.value.trim().toLowerCase();
+      const g = topGroup.value;
+      const l = subLab.value;
+      const lowOnly = onlyLow.checked;
+
+      let arr = state.raw.slice();
+
+      if (g) arr = arr.filter(v => (v.group || "") === g);
+      if (l) arr = arr.filter(v => (v.lab || "") === l);
+      if (q) {
+        arr = arr.filter(v =>
+          (v.name || "").toLowerCase().includes(q) ||
+          (v.location || "").toLowerCase().includes(q)
+        );
+      }
+      if (lowOnly) {
+        arr = arr.filter(v => Number(v.qty || 0) <= 0);
+      }
+      arr.sort((a,b) => (a.name || "").localeCompare(b.name || "", "ko"));
+      state.view = arr;
+    }
+
+    // 7) 테이블 렌더
+    function renderTable() {
+      itemsTbody.innerHTML = "";
+      let count = 0;
+      let qtySum = 0;
+
+      state.view.forEach(item => {
+        count += 1;
+        qtySum += Number(item.qty || 0);
+
+        const tr = document.createElement("tr");
+        tr.className = "row-click";
+
+        const detailTd = document.createElement("td");
+        const detailBtn = document.createElement("button");
+        detailBtn.textContent = "상세";
+        detailBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openDetail(item.id);
+        });
+        detailTd.appendChild(detailBtn);
+
+        const nameTd = document.createElement("td");
+        nameTd.textContent = item.name || "";
+
+        const groupTd = document.createElement("td");
+        groupTd.textContent = item.group || "";
+
+        const labTd = document.createElement("td");
+        labTd.textContent = item.lab || "";
+
+        const locTd = document.createElement("td");
+        locTd.textContent = item.location || "";
+
+        const qtyTd = document.createElement("td");
+        qtyTd.className = "right";
+        qtyTd.textContent = Number(item.qty || 0).toLocaleString();
+
+        const costTd = document.createElement("td");
+        costTd.className = "right";
+        costTd.textContent = Number(item.unit_cost || 0).toLocaleString();
+
+        const dateTd = document.createElement("td");
+        dateTd.textContent = item.checked_at || "";
+
+        const actionTd = document.createElement("td");
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "수정";
+        editBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          itemForm.dataset.editingId = item.id;
+          itemForm.name.value = item.name || "";
+          itemForm.group.value = item.group || "";
+          syncChildOptions(itemForm.group.value, itemChildLab, false);
+          itemForm.lab.value = item.lab || "";
+          itemForm.location.value = item.location || "";
+          itemForm.qty.value = Number(item.qty || 0);
+          itemForm.unit_cost.value = Number(item.unit_cost || 0);
+          itemForm.checked_at.value = item.checked_at || "";
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "삭제";
+        delBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          if (!confirm("정말 삭제하시겠습니까?")) return;
+          await deleteDoc(doc(itemsCol, item.id));
+          showToast("삭제됨");
+        });
+
+        actionTd.append(editBtn, document.createTextNode(" "), delBtn);
+
+        tr.append(detailTd, nameTd, groupTd, labTd, locTd, qtyTd, costTd, dateTd, actionTd);
+
+        tr.addEventListener("click", () => openDetail(item.id));
+
+        itemsTbody.appendChild(tr);
       });
-      unsubTx = onSnapshot(txCol(), (snap) => {
-        const remote = snap.docs.map(d=>d.data());
-        window.state.tx = mergeByUpdated(window.state.tx, remote);
-        window.localStorage.setItem('gfc_tx', JSON.stringify(window.state.tx));
-        if (window.state.detailItemId != null) window.renderTxModal?.(window.state.detailItemId);
+
+      totalCount.textContent = count.toLocaleString();
+      totalQty.textContent = qtySum.toLocaleString();
+    }
+
+    // 8) 실시간 아이템 구독
+    let unsubscribeItems = null;
+    function startLiveSubscription() {
+      if (unsubscribeItems) return;
+      const qy = query(itemsCol, orderBy("name","asc"));
+      unsubscribeItems = onSnapshot(qy, (snap) => {
+        const list = [];
+        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        state.raw = list;
+        applyFilters();
+        renderTable();
+        liveBadge.textContent = "실시간 동기화 중";
+        liveBadge.classList.remove("muted");
+
+        // 상세 모달이 열려있다면 헤더 정보 갱신
+        if (state.detailItemId) {
+          refreshDetailHeader(state.detailItemId);
+        }
+      }, (err) => {
+        console.error(err);
+        liveBadge.textContent = "동기화 오류";
+        liveBadge.classList.add("muted");
+        showToast("실시간 동기화 오류");
       });
-
-      await pushAllToFirestore();
     }
 
-    function stopSync() {
-      unsubItems?.(); unsubItems=null;
-      unsubTx?.(); unsubTx=null;
-      syncOn = false;
-    }
-
-    document.getElementById('fbSyncToggle').addEventListener('change', async (e) => {
-      if (e.target.checked) {
-        await startSync();
-        alert('Firebase 동기화를 시작했습니다.');
+    // 9) 쓰기 동작
+    async function upsertItem(item) {
+      const payload = {
+        name: item.name?.trim() || "",
+        group: item.group || "",
+        lab: item.lab || "",
+        location: item.location?.trim() || "",
+        qty: Number(item.qty) || 0,
+        unit_cost: Number(item.unit_cost) || 0,
+        checked_at: item.checked_at || null,
+        updated_at: serverTimestamp(),
+      };
+      if (item.id) {
+        await updateDoc(doc(itemsCol, item.id), payload);
       } else {
-        stopSync();
-        alert('Firebase 동기화를 중지했습니다.');
+        payload.created_at = serverTimestamp();
+        const newRef = await addDoc(itemsCol, payload);
+        // 신규 아이템은 상세 모달로 바로 열 수 있음(옵션)
+        // openDetail(newRef.id);
+      }
+    }
+
+    async function postTransaction(itemId, deltaQty, memo, dateStr) {
+      await runTransaction(db, async (tx) => {
+        const ref = doc(itemsCol, itemId);
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error("Item not found");
+        const curr = snap.data();
+        const nextQty = (Number(curr.qty) || 0) + (Number(deltaQty) || 0);
+
+        // 수량/날짜 업데이트
+        tx.update(ref, {
+          qty: nextQty,
+          checked_at: dateStr || curr.checked_at || null,
+          updated_at: serverTimestamp()
+        });
+
+        // 히스토리 기록
+        const histRef = doc(itemHistoryCol(itemId));
+        tx.set(histRef, {
+          date: dateStr || new Date().toISOString().slice(0,10),
+          delta: Number(deltaQty) || 0,
+          memo: memo || "",
+          created_at: serverTimestamp()
+        });
+      });
+    }
+
+    // 10) 상세 모달 + 히스토리 실시간 구독
+    function openDetail(itemId) {
+      state.detailItemId = itemId;
+      detailModal.style.display = "flex";
+      txDate.value = new Date().toISOString().slice(0,10);
+      txQty.value = "";
+      txMemo.value = "";
+      refreshDetailHeader(itemId);
+      startHistorySubscription(itemId);
+    }
+
+    function closeDetailModal() {
+      detailModal.style.display = "none";
+      stopHistorySubscription();
+      state.detailItemId = null;
+    }
+    closeDetail.addEventListener("click", closeDetailModal);
+    detailModal.addEventListener("click", (e) => { if (e.target === detailModal) closeDetailModal(); });
+
+    function refreshDetailHeader(itemId) {
+      const it = state.raw.find(x => x.id === itemId);
+      if (!it) return;
+      detailTitle.textContent = it.name || "-";
+      detailMeta.textContent = `${it.group || ""} / ${it.lab || ""}`.trim();
+      detailLoc.textContent = `위치: ${it.location || "-"}`;
+      detailQty.textContent = `현재고: ${Number(it.qty || 0).toLocaleString()}`;
+      detailPrice.textContent = `단가: ${Number(it.unit_cost || 0).toLocaleString()}`;
+      detailChecked.textContent = `확인일: ${it.checked_at || "-"}`;
+    }
+
+    function renderHistoryRows(itemId) {
+      const rows = state.historiesCache.get(itemId) || [];
+      txBody.innerHTML = "";
+      for (const r of rows) {
+        const tr = document.createElement("tr");
+        const created = r.created_at?.toDate ? r.created_at.toDate() : (r.created_at || null);
+        const createdStr = created ? new Date(created).toLocaleString("ko-KR") : "-";
+        tr.innerHTML = `
+          <td class="nowrap">${r.date || "-"}</td>
+          <td class="right nowrap">${Number(r.delta || 0).toLocaleString()}</td>
+          <td>${r.memo || ""}</td>
+          <td class="nowrap">${createdStr}</td>
+        `;
+        txBody.appendChild(tr);
+      }
+    }
+
+    function startHistorySubscription(itemId) {
+      stopHistorySubscription();
+      const qh = query(itemHistoryCol(itemId), orderBy("date", "desc"));
+      state.unsubHistory = onSnapshot(qh, (snap) => {
+        const list = [];
+        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        state.historiesCache.set(itemId, list);
+        renderHistoryRows(itemId);
+      }, (err) => {
+        console.error("history onSnapshot error", err);
+        showToast("히스토리 로드 오류");
+      });
+    }
+
+    function stopHistorySubscription() {
+      if (state.unsubHistory) {
+        state.unsubHistory();
+        state.unsubHistory = null;
+      }
+    }
+
+    // 입/출고 버튼
+    txIn.addEventListener("click", async () => {
+      const id = state.detailItemId;
+      if (!id) return;
+      const delta = Number(txQty.value);
+      if (!delta || isNaN(delta)) return showToast("수량을 입력하세요");
+      await postTransaction(id, Math.abs(delta), txMemo.value, txDate.value || null);
+      showToast("입고 기록됨");
+      txQty.value = "";
+      txMemo.value = "";
+    });
+
+    txOut.addEventListener("click", async () => {
+      const id = state.detailItemId;
+      if (!id) return;
+      const delta = Number(txQty.value);
+      if (!delta || isNaN(delta)) return showToast("수량을 입력하세요");
+      await postTransaction(id, -Math.abs(delta), txMemo.value, txDate.value || null);
+      showToast("출고 기록됨");
+      txQty.value = "";
+      txMemo.value = "";
+    });
+
+    copyTxBtn.addEventListener("click", async () => {
+      const id = state.detailItemId;
+      if (!id) return;
+      const it = state.raw.find(x => x.id === id);
+      const rows = (state.historiesCache.get(id) || []).slice().sort((a,b) => (b.date||"").localeCompare(a.date||""));
+      const header = `${it?.name || "-"} | ${it?.group || ""} / ${it?.lab || ""} | ${it?.location || "-"}`;
+      const lines = [header, "- 히스토리 -"];
+      for (const r of rows) {
+        lines.push(`${r.date || "-"} | ${Number(r.delta || 0)} | ${r.memo || ""}`);
+      }
+      const text = lines.join("\n");
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("히스토리 복사됨");
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+        showToast("히스토리 복사됨");
       }
     });
-  </script>
 
-  <script>
-    // 전역 노출 (다른 모듈에서 호출)
-    window.state = state;
-    window.renderItems = renderItems;
-    window.renderTxModal = renderTxModal;
+    // 11) 폼/필터 이벤트
+    formResetBtn.addEventListener("click", () => {
+      itemForm.reset();
+      delete itemForm.dataset.editingId;
+      // 폼 하위Lab 옵션 재주입
+      syncChildOptions(itemRootLab.value, itemChildLab, false);
+      showToast("폼 초기화");
+    });
+
+    itemForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await upsertItem({
+        id: itemForm.dataset.editingId || null,
+        name: itemForm.name.value,
+        group: itemForm.group.value,
+        lab: itemForm.lab.value,
+        location: itemForm.location.value,
+        qty: itemForm.qty.value,
+        unit_cost: itemForm.unit_cost.value,
+        checked_at: itemForm.checked_at.value || null,
+      });
+      itemForm.reset();
+      delete itemForm.dataset.editingId;
+      syncChildOptions(itemRootLab.value, itemChildLab, false);
+      showToast("저장됨");
+    });
+
+    [subLab, onlyLow, search].forEach(el => {
+      el.addEventListener("input", () => { applyFilters(); renderTable(); });
+      el.addEventListener("change", () => { applyFilters(); renderTable(); });
+    });
+
+    // 12) CSV/텍스트 도구
+    const importCsvBtn = $("#importCsvBtn");
+    const importCsvInput = $("#importCsvInput");
+    const exportCsvBtn = $("#exportCsvBtn");
+    const copyTextBtn = $("#copyTextBtn");
+
+    importCsvBtn.addEventListener("click", () => importCsvInput.click());
+    importCsvInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      const lines = text.trim().split(/\r?\n/);
+      const header = lines.shift()?.split(",");
+      const idx = (h) => header.findIndex(x => x.trim() === h);
+      for (const line of lines) {
+        const cells = line.split(",");
+        await upsertItem({
+          name: cells[idx("name")] || "",
+          group: cells[idx("group")] || "",
+          lab: cells[idx("lab")] || "",
+          location: cells[idx("location")] || "",
+          qty: cells[idx("qty")] || 0,
+          unit_cost: cells[idx("unit_cost")] || 0,
+          checked_at: cells[idx("checked_at")] || null,
+        });
+      }
+      showToast("CSV 가져오기 완료");
+      importCsvInput.value = "";
+    });
+
+    exportCsvBtn.addEventListener("click", () => {
+      const header = "name,group,lab,location,qty,unit_cost,checked_at";
+      const rows = state.view.map(v => [
+        (v.name||""),
+        (v.group||""),
+        (v.lab||""),
+        (v.location||""),
+        Number(v.qty||0),
+        Number(v.unit_cost||0),
+        (v.checked_at||"")
+      ].join(","));
+      const blob = new Blob([ [header, ...rows].join("\n") ], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "inventory.csv"; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    copyTextBtn.addEventListener("click", async () => {
+      const lines = state.view.map(v =>
+        `품목명:${v.name||""} | 상위:${v.group||""} | 하위:${v.lab||""} | 위치:${v.location||""} | 현재고:${Number(v.qty||0)} | 단가:${Number(v.unit_cost||0)} | 날짜:${v.checked_at||""}`
+      );
+      const text = lines.join("\n");
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("텍스트 복사됨");
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+        showToast("텍스트 복사됨");
+      }
+    });
+
+    // 13) 온라인/오프라인 UX
+    window.addEventListener("online", () => showToast("온라인 - 동기화됨"));
+    window.addEventListener("offline", () => showToast("오프라인 - 로컬 작업 대기"));
+
+    // 14) 초기화
+    document.addEventListener("DOMContentLoaded", () => {
+      // 초기 필터 하위Lab 옵션은 상위가 공백이면 전체만
+      if (!topGroup.value) {
+        subLab.innerHTML = "";
+        const o = document.createElement("option");
+        o.value = ""; o.textContent = "전체"; subLab.appendChild(o);
+      } else {
+        syncChildOptions(topGroup.value, subLab, true);
+      }
+      startLiveSubscription();
+      showToast("실시간 동기화 시작");
+    });
   </script>
 </body>
 </html>
