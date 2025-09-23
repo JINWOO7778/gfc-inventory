@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
-<title>GFC 연구소 재고관리 (Firestore 실시간)</title>
+<title>GFC 연구소 재고관리 (Firestore 실시간 + 이력 정상화)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root { color-scheme: light dark; }
@@ -138,8 +138,6 @@
   </div>
 </div>
 
-<div class="muted">Tip: 여러 기기에서 같은 URL로 접속하면 Firestore onSnapshot으로 즉시 동기화됩니다.</div>
-
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import {
@@ -147,9 +145,9 @@
     onSnapshot, query, orderBy, where, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  // 1) Firebase 콘솔에서 복사한 구성값으로 교체
+  // Firebase 콘솔값으로 교체
   const firebaseConfig = {
-   apiKey: "AIzaSyCTn9uq5vSbAn8SnxIlG_AwXvvz8_Is5R4",
+    apiKey: "AIzaSyCTn9uq5vSbAn8SnxIlG_AwXvvz8_Is5R4",
    authDomain: "gfc-inventory.firebaseapp.com",
    projectId: "gfc-inventory",
    storageBucket: "gfc-inventory.firebasestorage.app",
@@ -195,40 +193,39 @@
     render();
   }
 
-  // 실시간 구독
+  // 실시간 items 구독
   function subscribeItems(){
-    const itemsCol = collection(db, "items");
-    const qItems = query(itemsCol, orderBy("name"));
+    const qItems = query(collection(db, "items"), orderBy("name"));
     if (unsubItems) unsubItems();
     unsubItems = onSnapshot(qItems, (snap)=>{
       itemsCache = snap.docs.map(d=>({ id: d.id, ...d.data() }));
       renderItems();
-      $('#syncState').textContent = '실시간 동기화';
+      document.getElementById('syncState').textContent = '실시간 동기화';
     }, (err)=>{
       console.error(err);
-      $('#syncState').textContent = '동기화 오류';
+      document.getElementById('syncState').textContent = '동기화 오류';
     });
   }
 
   // CRUD
   async function addItem(){
     const it = {
-      name: $('#name').value.trim(),
-      labGroup: $('#labGroup').value,
-      lab: $('#lab').value,
-      loc: $('#loc').value.trim(),
-      reorder: $('#reorder').value.trim()===''? '' : Number($('#reorder').value),
+      name: document.getElementById('name').value.trim(),
+      labGroup: document.getElementById('labGroup').value,
+      lab: document.getElementById('lab').value,
+      loc: document.getElementById('loc').value.trim(),
+      reorder: document.getElementById('reorder').value.trim()===''? '' : Number(document.getElementById('reorder').value),
       qty: 0,
-      checkDate: $('#checkDate').value || '',
+      checkDate: document.getElementById('checkDate').value || '',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
     if (!it.name) return alert('품목명 필수');
     if (!it.labGroup || !it.lab) return alert('상위 연구소/하위 Lab 선택');
     await addDoc(collection(db, "items"), it);
-    $('#name').value=''; $('#labGroup').value='';
-    $('#lab').innerHTML='<option value="">하위 Lab 선택</option>'; $('#lab').disabled=true;
-    $('#loc').value=''; $('#reorder').value=''; $('#checkDate').value='';
+    document.getElementById('name').value=''; document.getElementById('labGroup').value='';
+    document.getElementById('lab').innerHTML='<option value="">하위 Lab 선택</option>'; document.getElementById('lab').disabled=true;
+    document.getElementById('loc').value=''; document.getElementById('reorder').value=''; document.getElementById('checkDate').value='';
   }
 
   async function adjustQty(itemId, delta, dateOpt, noteOpt){
@@ -265,10 +262,10 @@
 
   // 렌더링
   function filteredItems(){
-    const q = $('#search').value.trim().toLowerCase();
-    const lowOnly = $('#lowStockFilter').value==='low';
-    const lowLevel = num($('#lowStockLevel').value)||0;
-    const groupFilter = $('#filterGroup').value;
+    const q = document.getElementById('search').value.trim().toLowerCase();
+    const lowOnly = document.getElementById('lowStockFilter').value==='low';
+    const lowLevel = num(document.getElementById('lowStockLevel').value)||0;
+    const groupFilter = document.getElementById('filterGroup').value;
     let arr = itemsCache.slice();
     if (q){
       arr = arr.filter(x =>
@@ -278,8 +275,8 @@
         (x.loc||'').toLowerCase().includes(q)
       );
     }
-    if (groupFilter){ arr = arr.filter(x => (x.labGroup||'') === groupFilter); }
-    if (lowOnly){ arr = arr.filter(x => num(x.qty) <= (num(x.reorder)||lowLevel)); }
+    if (groupFilter) arr = arr.filter(x => (x.labGroup||'') === groupFilter);
+    if (lowOnly) arr = arr.filter(x => num(x.qty) <= (num(x.reorder)||lowLevel));
     arr.sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')));
     return arr;
   }
@@ -292,7 +289,7 @@
       sumQty += num(it.qty);
       const tr = document.createElement('tr');
       tr.setAttribute('data-id', it.id);
-      const warn = (num(it.qty) <= (num(it.reorder)||num($('#lowStockLevel').value)||0)) ? '<span class="warn">⚠</span>':'';
+      const warn = (num(it.qty) <= (num(it.reorder)||num(document.getElementById('lowStockLevel').value)||0)) ? '<span class="warn">⚠</span>':'';
       tr.innerHTML = `
         <td class="clickable">${it.name||''} ${warn}</td>
         <td>${it.labGroup||''}</td>
@@ -318,29 +315,31 @@
       `;
       body.appendChild(tr);
     }
-    $('#count').textContent=String(arr.length);
-    $('#sumQty').textContent=String(sumQty);
+    document.getElementById('count').textContent=String(arr.length);
+    document.getElementById('sumQty').textContent=String(sumQty);
   }
 
   // 모달
   function openDetail(id){
-    detailItemId = id;
+    detailItemId = id;           // 모달이 어떤 item을 보는지 고정
     renderTxModal(id);
-    $('#detailBackdrop').style.display='flex';
-    $('#detailClose').focus();
+    document.getElementById('detailBackdrop').style.display='flex';
+    document.getElementById('detailClose').focus();
   }
   function closeDetail(){
     detailItemId = null;
     if (unsubTx) { unsubTx(); unsubTx = null; }
-    $('#detailBackdrop').style.display='none';
+    document.getElementById('detailBackdrop').style.display='none';
   }
   function renderTxModal(id){
     const it = itemsCache.find(x=>x.id===id); if (!it) return;
-    $('#detailTitle').textContent = `이력 — ${it.name}`;
-    $('#detailMeta').textContent = `${it.labGroup||''} / ${it.lab||''} / ${it.loc||''} · 현재고: ${it.qty} · 확인일: ${it.checkDate||'-'}`;
-    $('#d_date').value = it.checkDate || today();
-    $('#d_qty').value = ''; $('#d_note').value = '';
+    document.getElementById('detailTitle').textContent = `이력 — ${it.name}`;
+    document.getElementById('detailMeta').textContent = `${it.labGroup||''} / ${it.lab||''} / ${it.loc||''} · 현재고: ${it.qty} · 확인일: ${it.checkDate||'-'}`;
+    document.getElementById('d_date').value = it.checkDate || today();
+    document.getElementById('d_qty').value = '';
+    document.getElementById('d_note').value = '';
 
+    // 이전 구독 해제 후 새 구독(중복 방지)
     if (unsubTx) { unsubTx(); unsubTx = null; }
     const qTx = query(collection(db, "tx"), where("itemId","==",id), orderBy("date","desc"));
     unsubTx = onSnapshot(qTx, (snap)=>{
@@ -360,6 +359,7 @@
 
   // 테이블 이벤트
   document.getElementById('itemsTable').addEventListener('click', async (e)=>{
+    // 버튼 동작은 우선 처리
     const btn = e.target.closest('button[data-act]');
     if (btn){
       const id = btn.dataset.id;
@@ -371,11 +371,14 @@
       } else if (act==='del'){
         await deleteItem(id);
       }
-      return;
+      return; // 버튼 클릭 시 모달 열지 않음
     }
+    // 입력창 클릭은 모달 열지 않음
     if (e.target.closest('input[data-act="setQty"]') || e.target.closest('input[data-act="setDate"]')) return;
+
     const row = e.target.closest('tr'); if (!row) return;
-    const id = row.getAttribute('data-id'); if (id) openDetail(id);
+    const id = row.getAttribute('data-id'); // 문자열 id 그대로 사용
+    if (id) openDetail(id);
   });
 
   document.getElementById('itemsTable').addEventListener('change', async (e)=>{
@@ -404,35 +407,35 @@
   });
   document.getElementById('d_add_in').addEventListener('click', async ()=>{
     const id = detailItemId; if (!id) return;
-    const dateVal = $('#d_date').value || today();
-    const qty = num($('#d_qty').value); if (!qty) return alert('수량을 입력하세요');
-    await adjustQty(id, Math.abs(qty), dateVal, $('#d_note').value.trim() || '입고');
-    $('#d_qty').value=''; $('#d_note').value='';
+    const dateVal = document.getElementById('d_date').value || today();
+    const qty = num(document.getElementById('d_qty').value); if (!qty) return alert('수량을 입력하세요');
+    await adjustQty(id, Math.abs(qty), dateVal, document.getElementById('d_note').value.trim() || '입고');
+    document.getElementById('d_qty').value=''; document.getElementById('d_note').value='';
   });
   document.getElementById('d_add_out').addEventListener('click', async ()=>{
     const id = detailItemId; if (!id) return;
-    const dateVal = $('#d_date').value || today();
-    const qty = num($('#d_qty').value); if (!qty) return alert('수량을 입력하세요');
-    await adjustQty(id, -Math.abs(qty), dateVal, $('#d_note').value.trim() || '출고');
-    $('#d_qty').value=''; $('#d_note').value='';
+    const dateVal = document.getElementById('d_date').value || today();
+    const qty = num(document.getElementById('d_qty').value); if (!qty) return alert('수량을 입력하세요');
+    await adjustQty(id, -Math.abs(qty), dateVal, document.getElementById('d_note').value.trim() || '출고');
+    document.getElementById('d_qty').value=''; document.getElementById('d_note').value='';
   });
 
   // 폼 버튼
   document.getElementById('addItemBtn').addEventListener('click', addItem);
   document.getElementById('resetItemBtn').addEventListener('click', ()=>{
-    $('#name').value=''; $('#labGroup').value='';
-    $('#lab').innerHTML='<option value="">하위 Lab 선택</option>'; $('#lab').disabled=true;
-    $('#loc').value=''; $('#reorder').value=''; $('#checkDate').value='';
+    document.getElementById('name').value=''; document.getElementById('labGroup').value='';
+    document.getElementById('lab').innerHTML='<option value="">하위 Lab 선택</option>'; document.getElementById('lab').disabled=true;
+    document.getElementById('loc').value=''; document.getElementById('reorder').value=''; document.getElementById('checkDate').value='';
   });
   document.getElementById('quickApplyBtn').addEventListener('click', async ()=>{
-    const name = $('#quickName').value.trim().toLowerCase();
-    const delta = num($('#quickDelta').value);
-    const dateVal = $('#quickDate').value || today();
+    const name = document.getElementById('quickName').value.trim().toLowerCase();
+    const delta = num(document.getElementById('quickDelta').value);
+    const dateVal = document.getElementById('quickDate').value || today();
     if (!name || !delta) return;
     const found = itemsCache.find(x => (x.name||'').toLowerCase()===name);
     if (!found) return alert('해당 품목을 찾을 수 없습니다');
     await adjustQty(found.id, delta, dateVal, '빠른 조정');
-    $('#quickDelta').value='';
+    document.getElementById('quickDelta').value='';
   });
 
   // 초기화
