@@ -154,6 +154,14 @@ header {
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
+    <!-- Excel 내보내기 -->
+    <button class="icon-btn export" id="btnExportXLSX" title="Excel 내보내기 (XLSX)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
+           stroke="currentColor" viewBox="0 0 24 24">
+        <path d="M4 4h16v4H4zM4 10h16v4H4zM4 16h16v4H4z"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <!-- CSV 가져오기 -->
     <button class="icon-btn import" id="btnImportCSV" title="CSV 가져오기">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
@@ -628,10 +636,30 @@ header {
         h.note||'', h.price!=null ? h.price : '',
         h.user||'', h.ts ? new Date(h.ts).toISOString() : ''
       ]);
-      download(`history_${item.name}_${todayStr()}.csv`, toCSV([header, ...rows]));
+      const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+      const colWidths = header.map((h,i)=>({wch: Math.max(h.length, ...rows.map(r=>(r[i]? r[i].toString().length:0)))+2}));
+      ws['!cols'] = colWidths;
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'History');
+      XLSX.writeFile(wb, `history_${item.name}_${todayStr()}.xlsx`);
     });
 
-    // 초기화
+    
+// XLSX 내보내기
+function exportXLSX(){
+  const header = ['id','name','manufacturer','catalog','topLab','subLab','location','qty','unit','price','stockDate','createdAt'];
+  const rows = items.map(x=>[x.id,x.name,x.manufacturer,x.catalog,x.topLab,x.subLab,x.location,x.qty,x.unit,x.price,x.stockDate,x.createdAt]);
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  // 자동 열너비 설정
+  const colWidths = header.map((h,i)=>({wch: Math.max(h.length, ...rows.map(r=>(r[i]? r[i].toString().length:0)))+2}));
+  ws['!cols'] = colWidths;
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Items');
+  XLSX.writeFile(wb, `items_${todayStr()}.xlsx`);
+}
+document.querySelector('#btnExportXLSX').addEventListener('click', exportXLSX);
+
+// 초기화
     (async function init(){
       try{ await loadFromFirestore(); }catch(e){ const raw = localStorage.getItem(storeKey); items = raw ? JSON.parse(raw) : []; console.warn('Firestore 로드 실패, 캐시 사용', e); }
       resetMainForm();
@@ -643,5 +671,6 @@ header {
   <footer>
     This system page is copyrighted by GFC Life Science and JINWOO MIN.
   </footer>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </body>
 </html>
