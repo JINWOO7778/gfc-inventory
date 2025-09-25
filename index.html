@@ -2,14 +2,13 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>재고 관리</title>
+  <title>지에프씨생명과학 재고 관리</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
-      
-  --brand-primary: #006d77;
-  --brand-secondary: #83c5be;
-  --brand-bg: #edf6f9;
+      --brand-primary: #006d77;
+      --brand-secondary: #83c5be;
+      --brand-bg: #edf6f9;
 
       --gap:12px;--border:#e6e9ef;--muted:#5f6b7a;--bg:#f7fafc;--card:#ffffff;
       --thead:#eaf1ff;--thead-text:#0e1a2b;--row-hover:#f3f6fb;--text:#111825;
@@ -17,7 +16,7 @@
       --ok:#10b981;--ok-600:#059669;--focus:#93c5fd;--shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.1);
     }
     *{box-sizing:border-box;}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);} 
     header{padding:16px 20px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:10;}
 
 header {
@@ -31,66 +30,63 @@ header {
   align-items: center;
   justify-content: space-between;
 }
-.csv-actions {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-.csv-actions button, .csv-actions input {
-  font-size: 12px;
-  padding: 6px 8px;
-}
+.logo-area { display:flex; align-items:center; gap:10px; }
+.logo { height:36px; object-fit:contain; }
+.brand-text { font-size:18px; font-weight:700; color:var(--brand-primary); }
+@media (max-width:640px){ .brand-text{ display:none;} }
+.csv-actions { display: flex; gap: 6px; align-items: center; }
+.csv-actions button, .csv-actions input { font-size: 12px; padding: 6px 8px; }
 
     header h1{margin:0;font-size:18px;}
     main{padding:16px 20px;display:grid;gap:24px;}
     footer{padding:20px 16px;color:#49566a;text-align:center;font-size:13px;}
 
-    .card{border:1px solid var(--border);border-radius:10px;background:var(--card);box-shadow:var(--shadow);}
-    .card h2{margin:0;padding:14px 16px;border-bottom:1px solid var(--border);font-size:16px;background:#fff;}
+    .card{border:1px solid var(--border);border-radius:10px;background:var(--card);box-shadow:var(--shadow);} 
+    .card h2{margin:0;padding:14px 16px;border-bottom:1px solid var(--border);font-size:16px;background:#fff;} 
     .card .body{padding:16px;}
 
-    .form-grid{display:grid;grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));gap: var(--gap);align-items:start;}
-    .field label{display:block;margin-bottom:6px;color:#334155;}
+    .form-grid{display:grid;grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));gap: var(--gap);align-items:start;} 
+    .field label{display:block;margin-bottom:6px;color:#334155;} 
     .field input[type="text"],.field input[type="number"],.field input[type="date"],.field select,.field textarea{
       width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);font-size:14px;outline:none;
     }
-    .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--focus);box-shadow:0 0 0 3px rgba(147,197,253,.35);}
-    .field textarea{min-height:72px;resize:vertical;}
-    .row{display:flex;gap:var(--gap);flex-wrap:wrap;}
-    .row > *{flex:1 1 220px;}
-    .muted{color:var(--muted);font-size:13px;}
-    .actions{display:flex;gap:8px;flex-wrap:wrap;}
-    button{appearance:none;border:1px solid var(--border);background:#fff;color:var(--text);padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;transition:.15s;}
-    .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;}
-    .btn-primary:hover{background:var(--primary-600);}
-    .btn-danger{background:var(--danger);border-color:var(--danger);color:#fff;}
-    .btn-danger:hover{background:var(--danger-600);}
-    .btn-ok{background:var(--ok);border-color:var(--ok);color:#fff;}
-    .btn-ok:hover{background:var(--ok-600);}
-    .btn-ghost{background:#fff;border-color:var(--border);}
+    .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--focus);box-shadow:0 0 0 3px rgba(147,197,253,.35);} 
+    .field textarea{min-height:72px;resize:vertical;} 
+    .row{display:flex;gap:var(--gap);flex-wrap:wrap;} 
+    .row > *{flex:1 1 220px;} 
+    .muted{color:var(--muted);font-size:13px;} 
+    .actions{display:flex;gap:8px;flex-wrap:wrap;} 
+    button{appearance:none;border:1px solid var(--border);background:#fff;color:var(--text);padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;transition:.15s;} 
+    .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;} 
+    .btn-primary:hover{background:var(--primary-600);} 
+    .btn-danger{background:var(--danger);border-color:var(--danger);color:#fff;} 
+    .btn-danger:hover{background:var(--danger-600);} 
+    .btn-ok{background:var(--ok);border-color:var(--ok);color:#fff;} 
+    .btn-ok:hover{background:var(--ok-600);} 
+    .btn-ghost{background:#fff;border-color:var(--border);} 
 
-    .table-wrap{overflow-x:hidden;border:1px solid var(--border);border-radius:10px;background:#fff;}
-    table{width:100%;border-collapse:separate;border-spacing:0;min-width:760px;}
-    th, td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle;font-size:14px;white-space:nowrap;}
-    thead th{background:var(--thead);color:var(--thead-text);font-weight:700;}
-    tbody tr:hover{background:var(--row-hover);}
-    td.num, th.num{text-align:right;}
+    .table-wrap{overflow-x:hidden;border:1px solid var(--border);border-radius:10px;background:#fff;} 
+    table{width:100%;border-collapse:separate;border-spacing:0;min-width:760px;} 
+    th, td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle;font-size:14px;white-space:nowrap;} 
+    thead th{background:var(--thead);color:var(--thead-text);font-weight:700;} 
+    tbody tr:hover{background:var(--row-hover);} 
+    td.num, th.num{text-align:right;} 
 
     /* 모달 */
-    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.35);padding:20px;z-index:50;}
-    .modal.open{display:flex;}
-    .modal .dialog{width:min(1040px,100%);max-height:92vh;background:#fff;border-radius:12px;overflow:hidden;border:1px solid var(--border);display:flex;flex-direction:column;box-shadow:var(--shadow);}
-    .modal .head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:1;}
-    .modal .head h3{margin:0;font-size:16px;color:#0f172a;}
-    .modal .content{padding:16px;display:block;overflow-y:auto;overflow-x:hidden;}
-    .split{display:grid;grid-template-columns: minmax(0,1.15fr) minmax(0,1fr);gap:16px;}
-    @media (max-width: 1040px){.split{grid-template-columns:1fr;}}
-    .split .card:first-child{order:2;} /* 기본정보 */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.35);padding:20px;z-index:50;} 
+    .modal.open{display:flex;} 
+    .modal .dialog{width:min(1040px,100%);max-height:92vh;background:#fff;border-radius:12px;overflow:hidden;border:1px solid var(--border);display:flex;flex-direction:column;box-shadow:var(--shadow);} 
+    .modal .head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:1;} 
+    .modal .head h3{margin:0;font-size:16px;color:#0f172a;} 
+    .modal .content{padding:16px;display:block;overflow-y:auto;overflow-x:hidden;} 
+    .split{display:grid;grid-template-columns: minmax(0,1.15fr) minmax(0,1fr);gap:16px;} 
+    @media (max-width: 1040px){.split{grid-template-columns:1fr;}} 
+    .split .card:first-child{order:2;}  /* 기본정보 */ 
     .split .card:last-child{order:1;}  /* 입출고 */
 
-    .searchbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-    .searchbar input{flex:1 1 260px;}
-  
+    .searchbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;} 
+    .searchbar input{flex:1 1 260px;} 
+
 /* CSV 액션 */
 .csv-actions {
   display: flex;
@@ -137,12 +133,18 @@ header {
   display: none;
 }
 
-</style>
+  </style>
 </head>
 <body>
-  
+
 <header>
-  <h1>재고 관리 시스템</h1>
+  <div class="logo-area">
+    <img src="지에프씨-로고 PNG.png" alt="GFC Life Science" class="logo" />
+    <div>
+      <div class="brand-text">지에프씨생명과학 연구소</div>
+      <div style="font-size:12px;color:var(--muted);">재고 관리 시스템</div>
+    </div>
+  </div>
   <div class="csv-actions">
     <!-- CSV 내보내기 -->
     <button class="icon-btn export" id="btnExportCSV" title="CSV 내보내기">
@@ -538,9 +540,9 @@ header {
     // CSV 유틸
     function toCSV(rows){
       return rows.map(r=>r.map(v=>{
-        const s = (v??'').toString().replaceAll('"','""');
-        return `"${s}"`;
-      }).join(',')).join('\n');
+        const s = (v??'').toString().replaceAll('\"','\"\"');
+        return `"` + s + `"`;
+      }).join(',')).join('\\n');
     }
     function download(filename, text){
       const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
@@ -550,15 +552,15 @@ header {
       URL.revokeObjectURL(url);
     }
     function parseCSV(text){
-      const lines = text.replace(/\r/g,'').split('\n').filter(Boolean);
+      const lines = text.replace(/\\r/g,'').split('\\n').filter(Boolean);
       const out = [];
       for(const line of lines){
         const row = [];
         let cur = '', inQ = false;
         for(let i=0;i<line.length;i++){
           const ch = line[i];
-          if(ch === '"'){
-            if(inQ && line[i+1] === '"'){ cur += '"'; i++; }
+          if(ch === '\"'){
+            if(inQ && line[i+1] === '\"'){ cur += '\"'; i++; }
             else inQ = !inQ;
           }else if(ch === ',' && !inQ){
             row.push(cur); cur='';
