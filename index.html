@@ -17,25 +17,14 @@
     }
     *{box-sizing:border-box;}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);} 
-    header{padding:16px 20px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:10;}
+    header{padding:16px 20px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;}
 
-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--card);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.logo-area { display:flex; align-items:center; gap:10px; }
-.logo { height:36px; object-fit:contain; }
-.brand-text { font-size:18px; font-weight:700; color:var(--brand-primary); }
-@media (max-width:640px){ .brand-text{ display:none;} }
-.csv-actions { display: flex; gap: 6px; align-items: center; }
-.csv-actions button, .csv-actions input { font-size: 12px; padding: 6px 8px; }
+    .logo-area { display:flex; align-items:center; gap:10px; }
+    .logo { height:36px; object-fit:contain; }
+    .brand-text { font-size:18px; font-weight:700; color:var(--brand-primary); }
+    @media (max-width:640px){ .brand-text{ display:none;} }
+    .csv-actions { display: flex; gap: 6px; align-items: center; }
+    .csv-actions button { font-size: 12px; padding: 6px 8px; }
 
     header h1{margin:0;font-size:18px;}
     main{padding:16px 20px;display:grid;gap:24px;}
@@ -65,12 +54,16 @@ header {
     .btn-ok:hover{background:var(--ok-600);} 
     .btn-ghost{background:#fff;border-color:var(--border);} 
 
-    .table-wrap{overflow-x:hidden;border:1px solid var(--border);border-radius:10px;background:#fff;} 
-    table{width:100%;border-collapse:separate;border-spacing:0;min-width:760px;} 
+    .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:#fff;} 
+    table{width:100%;border-collapse:separate;border-spacing:0;min-width:1100px;} 
     th, td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle;font-size:14px;white-space:nowrap;} 
     thead th{background:var(--thead);color:var(--thead-text);font-weight:700;} 
     tbody tr:hover{background:var(--row-hover);} 
     td.num, th.num{text-align:right;} 
+
+    /* 정렬 가능한 헤더 */
+    th.sortable{cursor:pointer;user-select:none;}
+    th.sortable .sort-ind{margin-left:4px;opacity:.65;font-size:11px;}
 
     /* 모달 */
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.35);padding:20px;z-index:50;} 
@@ -87,51 +80,23 @@ header {
     .searchbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;} 
     .searchbar input{flex:1 1 260px;} 
 
-/* CSV 액션 */
-.csv-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-/* 버튼 공통 스타일 */
-.icon-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--brand-bg);
-  color: var(--brand-primary);
-  cursor: pointer;
-  transition: background 0.25s ease, transform 0.15s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-}
-
-.icon-btn:hover {
-  background: var(--brand-secondary);
-  color: #fff;
-  transform: scale(1.05);
-}
-
-.icon-btn:active {
-  transform: scale(0.92);
-}
-
-/* CSV Export / Import 색상 강조 */
-.icon-btn.export svg {
-  stroke: var(--brand-primary);
-}
-.icon-btn.import svg {
-  stroke: var(--brand-primary);
-}
-
-/* 파일 input 숨기기 */
-.file-input {
-  display: none;
-}
+    /* 버튼 공통 스타일 */
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--brand-bg);
+      color: var(--brand-primary);
+      cursor: pointer;
+      transition: background 0.25s ease, transform 0.15s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .icon-btn:hover { background: var(--brand-secondary); color: #fff; transform: scale(1.05); }
+    .icon-btn:active { transform: scale(0.92); }
 
   </style>
 </head>
@@ -146,14 +111,6 @@ header {
     </div>
   </div>
   <div class="csv-actions">
-    <!-- CSV 내보내기 -->
-    <button class="icon-btn export" id="btnExportCSV" title="CSV 내보내기">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
-           stroke="currentColor" viewBox="0 0 24 24">
-        <path d="M4 4h16v4H4zm0 12h16v4H4zM4 12h16v4H4z"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
     <!-- Excel 내보내기 -->
     <button class="icon-btn export" id="btnExportXLSX" title="Excel 내보내기 (XLSX)">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
@@ -162,16 +119,6 @@ header {
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
-    <!-- CSV 가져오기 -->
-    <button class="icon-btn import" id="btnImportCSV" title="CSV 가져오기">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
-           stroke="currentColor" viewBox="0 0 24 24">
-        <path d="M12 4v16m8-8H4"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
-    <!-- 파일 선택 (숨김 처리) -->
-    <input type="file" id="csvFile" accept=".csv" class="file-input" />
   </div>
 </header>
 
@@ -182,7 +129,7 @@ header {
       <h2>검색</h2>
       <div class="body">
         <div class="searchbar">
-          <input type="text" id="searchInput" placeholder="품목명, 연구소, Lab, 위치로 검색" />
+          <input type="text" id="searchInput" placeholder="품목명, 연구소, Lab, 위치, 제조사, Cat#로 검색" />
           <button class="btn-ghost" id="btnClearSearch">지우기</button>
         </div>
       </div>
@@ -194,6 +141,8 @@ header {
       <div class="body">
         <div class="form-grid">
           <div class="field"><label for="name">품목명</label><input type="text" id="name" placeholder="예: 50ml conical tube" /></div>
+          <div class="field"><label for="manufacturer">제조사</label><input type="text" id="manufacturer" placeholder="예: Corning" /></div>
+          <div class="field"><label for="catalog">Cat#</label><input type="text" id="catalog" placeholder="예: 430828" /></div>
           <div class="field"><label for="topLab">상위연구소</label>
             <select id="topLab">
               <option value="">전체공용</option>
@@ -227,9 +176,11 @@ header {
             <thead>
               <tr>
                 <th>작업</th>
-                <th>품목명</th>
-                <th>상위연구소</th>
-                <th>하위Lab</th>
+                <th class="sortable" data-sort="name">품목명<span class="sort-ind" id="ind-name"></span></th>
+                <th>제조사</th>
+                <th>Cat#</th>
+                <th class="sortable" data-sort="topLab">상위연구소<span class="sort-ind" id="ind-topLab"></span></th>
+                <th class="sortable" data-sort="subLab">하위Lab<span class="sort-ind" id="ind-subLab"></span></th>
                 <th>위치</th>
                 <th class="num">현재재고량</th>
                 <th class="num">단가(원)</th>
@@ -249,7 +200,7 @@ header {
       <div class="head">
         <h3>상세 팝업</h3>
         <div class="actions">
-          <button class="btn-ghost" id="btnExportHistoryCSV">히스토리 CSV</button>
+          <button class="btn-ghost" id="btnExportHistoryCSV">히스토리 내보내기</button>
           <button class="btn-danger" id="btnDelete">삭제</button>
           <button class="btn-ghost" id="btnClose">닫기</button>
         </div>
@@ -262,6 +213,8 @@ header {
             <div class="body">
               <div class="form-grid">
                 <div class="field"><label for="d_name">품목명</label><input type="text" id="d_name" /></div>
+                <div class="field"><label for="d_manufacturer">제조사</label><input type="text" id="d_manufacturer" /></div>
+                <div class="field"><label for="d_catalog">Cat#</label><input type="text" id="d_catalog" /></div>
                 <div class="field"><label for="d_topLab">상위연구소</label>
                   <select id="d_topLab">
                     <option value="">전체공용</option>
@@ -329,7 +282,7 @@ header {
     const db = getFirestore(app);
 
     const nf = new Intl.NumberFormat('ko-KR');
-    const storeKey = 'inv_items_cache_v1';
+    const storeKey = 'inv_items_cache_v3'; // schema bump
     let items = [];
     let currentId = null;
 
@@ -351,8 +304,30 @@ header {
     }
 
     // 폼 참조
-    const f = {name:$('#name'),topLab:$('#topLab'),subLab:$('#subLab'),location:$('#location'),qty:$('#qty'),unit:$('#unit'),price:$('#price'),stockDate:$('#stockDate'),createdAt:$('#createdAt'),btnReset:$('#btnReset'),btnApply:$('#btnApply'),searchInput:$('#searchInput'),btnClearSearch:$('#btnClearSearch')};
-    const d = {modal:$('#detailModal'),name:$('#d_name'),topLab:$('#d_topLab'),subLab:$('#d_subLab'),location:$('#d_location'),qty:$('#d_qty'),unit:$('#d_unit'),price:$('#d_price'),stockDate:$('#d_stockDate'),btnSave:$('#btnSaveDetail'),btnDelete:$('#btnDelete'),btnClose:$('#btnClose'),t_qty:$('#t_qty'),t_date:$('#t_date'),t_price:$('#t_price'),t_user:$('#t_user'),t_note:$('#t_note'),btnInbound:$('#btnInbound'),btnOutbound:$('#btnOutbound'),btnCopyHistory:$('#btnCopyHistory'),btnExportHistoryCSV:$('#btnExportHistoryCSV')};
+    const f = {
+      name:$('#name'), manufacturer:$('#manufacturer'), catalog:$('#catalog'),
+      topLab:$('#topLab'), subLab:$('#subLab'), location:$('#location'),
+      qty:$('#qty'), unit:$('#unit'), price:$('#price'),
+      stockDate:$('#stockDate'), createdAt:$('#createdAt'),
+      btnReset:$('#btnReset'), btnApply:$('#btnApply'),
+      searchInput:$('#searchInput'), btnClearSearch:$('#btnClearSearch')
+    };
+    const d = {
+      modal:$('#detailModal'),
+      name:$('#d_name'), manufacturer:$('#d_manufacturer'), catalog:$('#d_catalog'),
+      topLab:$('#d_topLab'), subLab:$('#d_subLab'), location:$('#d_location'),
+      qty:$('#d_qty'), unit:$('#d_unit'), price:$('#d_price'),
+      stockDate:$('#d_stockDate'), btnSave:$('#btnSaveDetail'),
+      btnDelete:$('#btnDelete'), btnClose:$('#btnClose'),
+      t_qty:$('#t_qty'), t_date:$('#t_date'), t_price:$('#t_price'),
+      t_user:$('#t_user'), t_note:$('#t_note'),
+      btnInbound:$('#btnInbound'), btnOutbound:$('#btnOutbound'),
+      btnCopyHistory:$('#btnCopyHistory'), btnExportHistoryCSV:$('#btnExportHistoryCSV')
+    };
+
+    // 정렬 상태
+    let sortKey = null; // 'name' | 'topLab' | 'subLab'
+    let sortDir = 'asc';
 
     // Firestore
     const colItems = collection(db, 'items');
@@ -360,7 +335,21 @@ header {
       const snap = await getDocs(colItems);
       items = snap.docs.map(docSnap=>{
         const data = docSnap.data();
-        return { id: docSnap.id, name: data.name||'', topLab: data.topLab||'', subLab: data.subLab||'', location: data.location||'', qty: Number(data.qty||0), unit: data.unit||'', price: Number(data.price||0), stockDate: data.stockDate||'', createdAt: data.createdAt||'', history: Array.isArray(data.history)?data.history:[] };
+        return {
+          id: docSnap.id,
+          name: data.name||'',
+          manufacturer: data.manufacturer||'',
+          catalog: data.catalog||'',
+          topLab: data.topLab||'',
+          subLab: data.subLab||'',
+          location: data.location||'',
+          qty: Number(data.qty||0),
+          unit: data.unit||'',
+          price: Number(data.price||0),
+          stockDate: data.stockDate||'',
+          createdAt: data.createdAt||'',
+          history: Array.isArray(data.history)?data.history:[]
+        };
       });
       localStorage.setItem(storeKey, JSON.stringify(items));
     }
@@ -374,10 +363,26 @@ header {
       const q = (f.searchInput?.value || '').toLowerCase().trim();
       const base = items.slice();
       if(!q) return base;
-      return base.filter(x=> [x.name,x.topLab,x.subLab,x.location].some(v=>(v||'').toLowerCase().includes(q)));
+      return base.filter(x=> [
+          x.name,x.topLab,x.subLab,x.location,x.manufacturer,x.catalog
+        ].some(v=>(v||'').toLowerCase().includes(q)));
+    }
+    function applySort(list){
+      if(!sortKey) return list;
+      const dir = sortDir === 'asc' ? 1 : -1;
+      return list.sort((a,b)=>{
+        const va = (a[sortKey] ?? '').toString();
+        const vb = (b[sortKey] ?? '').toString();
+        return va.localeCompare(vb, undefined, {numeric:true, sensitivity:'base'}) * dir;
+      });
+    }
+    function updateSortIndicators(){
+      const inds = { name:$('#ind-name'), topLab:$('#ind-topLab'), subLab:$('#ind-subLab') };
+      Object.values(inds).forEach(el=>{ if(el) el.textContent=''; });
+      if(sortKey && inds[sortKey]) inds[sortKey].textContent = sortDir==='asc' ? '▲' : '▼';
     }
     function renderItems(){
-      const list = getViewList();
+      const list = applySort(getViewList());
       tbody.innerHTML = '';
       list.forEach(item=>{
         const tr = document.createElement('tr');
@@ -385,15 +390,18 @@ header {
         const btnDetail = document.createElement('button'); btnDetail.textContent = '상세'; btnDetail.className = 'btn-ghost'; btnDetail.addEventListener('click', ()=>openDetail(item.id)); tdAct.appendChild(btnDetail);
 
         const tdName = document.createElement('td'); tdName.textContent = item.unit ? `${item.name} (${item.unit})` : item.name || '';
+        const tdManu = document.createElement('td'); tdManu.textContent = item.manufacturer || '';
+        const tdCat  = document.createElement('td'); tdCat.textContent = item.catalog || '';
         const tdTop = document.createElement('td'); tdTop.textContent = item.topLab || '';
         const tdSub = document.createElement('td'); tdSub.textContent = item.subLab || '';
         const tdLoc = document.createElement('td'); tdLoc.textContent = item.location || '';
         const tdQty = document.createElement('td'); tdQty.className='num'; tdQty.textContent = nf.format(Number(item.qty ?? 0));
         const tdPrice = document.createElement('td'); tdPrice.className='num'; tdPrice.textContent = nf.format(Number(item.price ?? 0));
         const tdSD = document.createElement('td'); tdSD.textContent = item.stockDate || '';
-        tr.append(tdAct, tdName, tdTop, tdSub, tdLoc, tdQty, tdPrice, tdSD);
+        tr.append(tdAct, tdName, tdManu, tdCat, tdTop, tdSub, tdLoc, tdQty, tdPrice, tdSD);
         tbody.appendChild(tr);
       });
+      updateSortIndicators();
     }
 
     // 모달
@@ -418,6 +426,8 @@ header {
 
     function fillDetail(item){
       d.name.value = item.name || '';
+      d.manufacturer.value = item.manufacturer || '';
+      d.catalog.value = item.catalog || '';
       d.topLab.value = item.topLab || '';
       populateSubLab(d.subLab, d.topLab.value);
       d.subLab.value = item.subLab || '';
@@ -439,7 +449,18 @@ header {
     }
 
     function getDetailEdits(){
-      return { name:(d.name.value||'').trim(), topLab:d.topLab.value||'', subLab:d.subLab.value||'', location:(d.location.value||'').trim(), qty:Number(d.qty.value||0), unit:(d.unit.value||'').trim(), price:Number(d.price.value||0), stockDate:d.stockDate.value||'' };
+      return {
+        name:(d.name.value||'').trim(),
+        manufacturer:(d.manufacturer.value||'').trim(),
+        catalog:(d.catalog.value||'').trim(),
+        topLab:d.topLab.value||'',
+        subLab:d.subLab.value||'',
+        location:(d.location.value||'').trim(),
+        qty:Number(d.qty.value||0),
+        unit:(d.unit.value||'').trim(),
+        price:Number(d.price.value||0),
+        stockDate:d.stockDate.value||''
+      };
     }
 
     function addHistory(item, rec){
@@ -449,12 +470,29 @@ header {
 
     // 메인 폼
     function resetMainForm(){
-      f.name.value=''; f.topLab.value=''; populateSubLab(f.subLab,''); f.subLab.value=''; f.location.value=''; f.qty.value=''; f.unit.value=''; f.price.value=''; f.stockDate.value=''; f.createdAt.value='';
+      f.name.value=''; f.manufacturer.value=''; f.catalog.value='';
+      f.topLab.value=''; populateSubLab(f.subLab,''); f.subLab.value='';
+      f.location.value=''; f.qty.value=''; f.unit.value=''; f.price.value='';
+      f.stockDate.value=''; f.createdAt.value='';
       if(!f.createdAt.value) f.createdAt.placeholder = todayStr();
       if(!f.stockDate.value) f.stockDate.placeholder = todayStr();
     }
     function validateMainForm(){ if(!(f.name.value||'').trim()){ alert('품목명을 입력하세요.'); return false; } return true; }
-    function newItemFromForm(){ return { id: crypto.randomUUID(), name:(f.name.value||'').trim(), topLab:f.topLab.value||'', subLab:f.subLab.value||'', location:(f.location.value||'').trim(), qty:Number(f.qty.value||0), unit:(f.unit.value||'').trim(), price:Number(f.price.value||0), stockDate:f.stockDate.value||'', createdAt:f.createdAt.value||todayStr(), history:[] }; }
+    function newItemFromForm(){ return {
+      id: crypto.randomUUID(),
+      name:(f.name.value||'').trim(),
+      manufacturer:(f.manufacturer.value||'').trim(),
+      catalog:(f.catalog.value||'').trim(),
+      topLab:f.topLab.value||'',
+      subLab:f.subLab.value||'',
+      location:(f.location.value||'').trim(),
+      qty:Number(f.qty.value||0),
+      unit:(f.unit.value||'').trim(),
+      price:Number(f.price.value||0),
+      stockDate:f.stockDate.value||'',
+      createdAt:f.createdAt.value||todayStr(),
+      history:[]
+    };}
 
     // 이벤트
     f.topLab.addEventListener('change', ()=>{ populateSubLab(f.subLab, f.topLab.value); f.subLab.value=''; });
@@ -473,6 +511,16 @@ header {
     // 검색
     f.searchInput?.addEventListener('input', renderItems);
     f.btnClearSearch?.addEventListener('click', ()=>{ f.searchInput.value=''; renderItems(); f.searchInput.focus(); });
+
+    // 정렬 (헤더 클릭)
+    document.querySelectorAll('th.sortable').forEach(th=>{
+      th.addEventListener('click', ()=>{
+        const key = th.getAttribute('data-sort');
+        if(sortKey === key){ sortDir = (sortDir === 'asc') ? 'desc' : 'asc'; }
+        else { sortKey = key; sortDir = 'asc'; }
+        renderItems();
+      });
+    });
 
     // 상세 저장/삭제
     d.btnClose.addEventListener('click', closeModal);
@@ -545,86 +593,7 @@ header {
       alert('출고 처리되었습니다.');
     });
 
-    // CSV 유틸
-    function toCSV(rows){
-      return rows.map(r=>r.map(v=>{
-        const s = (v??'').toString().replaceAll('\"','\"\"');
-        return `"` + s + `"`;
-      }).join(',')).join('\\n');
-    }
-    function download(filename, text){
-      const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.click();
-      URL.revokeObjectURL(url);
-    }
-    function parseCSV(text){
-      const lines = text.replace(/\\r/g,'').split('\\n').filter(Boolean);
-      const out = [];
-      for(const line of lines){
-        const row = [];
-        let cur = '', inQ = false;
-        for(let i=0;i<line.length;i++){
-          const ch = line[i];
-          if(ch === '\"'){
-            if(inQ && line[i+1] === '\"'){ cur += '\"'; i++; }
-            else inQ = !inQ;
-          }else if(ch === ',' && !inQ){
-            row.push(cur); cur='';
-          }else{
-            cur += ch;
-          }
-        }
-        row.push(cur);
-        out.push(row);
-      }
-      return out;
-    }
-
-    // 전체 품목 CSV 내보내기
-    document.querySelector('#btnExportCSV').addEventListener('click', ()=>{
-      const header = ['id','name','topLab','subLab','location','qty','unit','price','stockDate','createdAt'];
-      const rows = items.map(x=>[x.id,x.name,x.topLab,x.subLab,x.location,x.qty,x.unit,x.price,x.stockDate,x.createdAt]);
-      download(`items_${todayStr()}.csv`, toCSV([header, ...rows]));
-    });
-
-    // CSV 가져오기
-    document.querySelector('#btnImportCSV').addEventListener('click', async ()=>{
-      const file = document.querySelector('#csvFile').files[0];
-      if(!file){ alert('CSV 파일을 선택하세요.'); return; }
-      const text = await file.text();
-      const rows = parseCSV(text);
-      const header = rows.shift().map(h=>h.trim());
-      const idx = Object.fromEntries(header.map((h,i)=>[h,i]));
-      if(!('id'in idx) || !('name'in idx)){ alert('필수 컬럼 누락: id, name'); return; }
-
-      let changed = 0;
-      for(const row of rows){
-        const obj = {
-          id: row[idx.id],
-          name: row[idx.name],
-          topLab: row[idx.topLab] || '',
-          subLab: row[idx.subLab] || '',
-          location: row[idx.location] || '',
-          qty: Number(row[idx.qty]||0),
-          unit: row[idx.unit] || '',
-          price: Number(row[idx.price]||0),
-          stockDate: row[idx.stockDate] || '',
-          createdAt: row[idx.createdAt] || todayStr(),
-          history: [] // 기본정보만 병합
-        };
-        const ex = items.find(x=>x.id===obj.id);
-        if(ex){ Object.assign(ex, obj); await updateItemFields(obj.id, obj); }
-        else { items.push(obj); await upsertItem(obj); }
-        changed++;
-      }
-      localStorage.setItem(storeKey, JSON.stringify(items));
-      renderItems();
-      alert(`가져오기 완료: ${changed}건 병합`);
-    });
-
-    // 히스토리 CSV (상세)
+    // 히스토리 XLSX (상세)
     d.btnExportHistoryCSV.addEventListener('click', ()=>{
       if(!currentId){ alert('품목을 먼저 선택하세요.'); return; }
       const item = items.find(x=>x.id===currentId);
@@ -644,22 +613,20 @@ header {
       XLSX.writeFile(wb, `history_${item.name}_${todayStr()}.xlsx`);
     });
 
-    
-// XLSX 내보내기
-function exportXLSX(){
-  const header = ['id','name','manufacturer','catalog','topLab','subLab','location','qty','unit','price','stockDate','createdAt'];
-  const rows = items.map(x=>[x.id,x.name,x.manufacturer,x.catalog,x.topLab,x.subLab,x.location,x.qty,x.unit,x.price,x.stockDate,x.createdAt]);
-  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-  // 자동 열너비 설정
-  const colWidths = header.map((h,i)=>({wch: Math.max(h.length, ...rows.map(r=>(r[i]? r[i].toString().length:0)))+2}));
-  ws['!cols'] = colWidths;
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Items');
-  XLSX.writeFile(wb, `items_${todayStr()}.xlsx`);
-}
-document.querySelector('#btnExportXLSX').addEventListener('click', exportXLSX);
+    // XLSX 내보내기 (전체 품목)
+    function exportXLSX(){
+      const header = ['id','name','manufacturer','catalog','topLab','subLab','location','qty','unit','price','stockDate','createdAt'];
+      const rows = items.map(x=>[x.id,x.name,x.manufacturer,x.catalog,x.topLab,x.subLab,x.location,x.qty,x.unit,x.price,x.stockDate,x.createdAt]);
+      const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+      const colWidths = header.map((h,i)=>({wch: Math.max(h.length, ...rows.map(r=>(r[i]? r[i].toString().length:0)))+2}));
+      ws['!cols'] = colWidths;
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Items');
+      XLSX.writeFile(wb, `items_${todayStr()}.xlsx`);
+    }
+    document.querySelector('#btnExportXLSX').addEventListener('click', exportXLSX);
 
-// 초기화
+    // 초기화
     (async function init(){
       try{ await loadFromFirestore(); }catch(e){ const raw = localStorage.getItem(storeKey); items = raw ? JSON.parse(raw) : []; console.warn('Firestore 로드 실패, 캐시 사용', e); }
       resetMainForm();
