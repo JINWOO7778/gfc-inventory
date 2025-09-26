@@ -6,14 +6,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
-      --brand-primary: #2563eb;
-      --brand-secondary: #3b82f6;
-      --brand-bg: #eef2ff;
+      --brand-primary: #006d77;
+      --brand-secondary: #83c5be;
+      --brand-bg: #edf6f9;
 
-      --gap:14px;--border:#e5e7eb;--muted:#6b7280;--bg:#f9fafb;--card:#ffffff;
-      --thead:#f3f4f6;--thead-text:#111827;--row-hover:#f9fafc;--text:#111827;
-      --danger:#ef4444;--danger-600:#dc2626;
-      --ok:#10b981;--ok-600:#059669;--shadow:0 2px 6px rgba(0,0,0,.05);
+
+      --gap:14px;--border:#e6e9ef;--muted:#5f6b7a;--bg:#f7fafc;--card:#ffffff;
+      --thead:#eaf1ff;--thead-text:#0e1a2b;--row-hover:#f3f6fb;--text:#111825;
+      --primary:#2563eb;--primary-600:#1d4ed8;--danger:#ef4444;--danger-600:#dc2626;
+      --ok:#10b981;--ok-600:#059669;--focus:#93c5fd;--shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.1);
+
     }
     *{box-sizing:border-box;}
     body{margin:0;font-family:Inter, system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);} 
@@ -74,7 +76,40 @@
     .searchbar input{flex:1 1 260px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;}
 
     .badge{display:inline-flex;align-items:center;gap:6px;background:var(--brand-bg);color:#1f2937;border:1px solid #e0e7ff;padding:4px 8px;border-radius:999px;font-size:12px;}
-  </style>
+  
+/* Compact clean table styles */
+th, td {
+  padding: 4px 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+td:hover {
+  overflow: visible;
+  white-space: normal;
+  background: #f9fafb;
+  position: relative;
+  z-index: 2;
+}
+.action-buttons {
+  display: inline-flex;
+  gap: 4px;
+}
+.action-buttons button {
+  padding: 2px 6px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+}
+.action-buttons button:hover {
+  background: #f3f4f6;
+}
+
+</style>
 </head>
 <body>
 
@@ -616,6 +651,6 @@
   })();
 </script>
 
-<footer>ⓒ GFC Life Science / JINWOO MIN</footer>
+<footer>This system page is copyrighted by GFC Life Science and JINWOO MIN</footer>
 </body>
 </html>
