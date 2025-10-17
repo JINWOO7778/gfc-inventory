@@ -50,7 +50,7 @@
     .btn-primary:hover{background:var(--brand-secondary);} 
     .btn-danger{background:var(--danger);color:#fff;border:none;padding:9px 14px;border-radius:8px;} 
     .btn-danger:hover{background:var(--danger-600);} 
-    .btn-ok{background:var(--ok);color:#fff;border:none;padding:9px 14px;border-radius:8px;} 
+    .btn-ok{background:var(--ok);color:#fff;border:none;padding:9px 14px;} 
     .btn-ok:hover{background:var(--ok-600);} 
     .btn-ghost{background:#fff;border:1px solid var(--border);padding:9px 14px;border-radius:8px;} 
     .btn-ghost:hover{background:#f3f4f6;} 
@@ -130,7 +130,7 @@ td:hover {
     <h2>🔎 검색</h2>
     <div class="body">
       <div class="searchbar">
-        <input type="text" id="searchInput" placeholder="품목명, 연구소, Lab, 위치, 제조사, Cat# 검색" />
+        <input type="text" id="searchInput" placeholder="품목명, 연구소, Lab, 위치, 제조사, Cat#, 단위 등 검색 (여러 단어 공백으로 AND 검색)" />
         <button class="btn-ghost" id="btnClearSearch">지우기</button>
       </div>
     </div>
@@ -149,6 +149,7 @@ td:hover {
             <option value="GBC 연구소">GBC 연구소</option>
             <option value="HMC 연구소">HMC 연구소</option>
             <option value="RNA 치료제 연구소">RNA 치료제 연구소</option>
+            <option value="의료기기-동탄1공장">의료기기-동탄1공장</option>
           </select>
         </div>
         <div class="field"><label for="subLab">하위Lab</label><select id="subLab"><option value="">선택</option></select></div>
@@ -256,11 +257,13 @@ td:hover {
   const $ = sel => document.querySelector(sel);
   const todayStr = () => new Date().toISOString().slice(0,10);
 
+  // ✅ 하위Lab 맵에 '의료기기-동탄1공장' 추가 (하위 항목은 필요 시 추후 확장)
   const subLabMap = {
     "": [""],
     "GBC 연구소": ["마이크로바이옴Lab","융합기술 Lab","재생바이오 Lab"],
     "HMC 연구소": ["활성연구 Lab","식물세포연구Lab","제형연구Lab","신소재연구 Lab"],
-    "RNA 치료제 연구소": ["RNA Lab"]
+    "RNA 치료제 연구소": ["RNA Lab"],
+    "의료기기-동탄1공장": []
   };
   function populateSubLab(selectEl, topLabValue){
     const opts = subLabMap[topLabValue || ""] || [""];
@@ -319,14 +322,32 @@ td:hover {
   async function removeItem(id){ await deleteDoc(doc(db,'items',id)); }
 
   const tbody = document.querySelector('#itemsTable tbody');
-  function getViewList(){
-    const q = (f.searchInput?.value || '').toLowerCase().trim();
-    const base = items.slice();
-    if(!q) return base;
-    return base.filter(x=> [
-        x.name,x.topLab,x.subLab,x.location,x.manufacturer,x.catalog
-      ].some(v=>(v||'').toLowerCase().includes(q)));
+
+  // ✅ 검색 로직 개선: 공백 기준 다중 키워드 AND 검색, 숫자/단위 포함, 안전한 lowerCase 처리
+  function normalize(v){
+    return (v ?? '').toString().toLowerCase().trim();
   }
+  function getSearchableText(x){
+    // 검색 대상 필드를 모두 연결
+    return [
+      x.name, x.topLab, x.subLab, x.location, x.manufacturer, x.catalog,
+      x.unit, x.qty, x.price, x.stockDate, x.createdAt
+    ].map(v => normalize(v)).join(' ');
+  }
+  function getViewList(){
+    const raw = normalize(f.searchInput?.value || '');
+    if(!raw) return items.slice();
+
+    const tokens = raw.split(/\s+/).filter(Boolean); // 공백 분리 토큰
+    const base = items.slice();
+
+    return base.filter(x => {
+      const hay = getSearchableText(x);
+      // 모든 토큰이 포함되어야 함 (AND 검색)
+      return tokens.every(tok => hay.includes(tok));
+    });
+  }
+
   function applySort(list){
     if(!sortKey) return list;
     const dir = sortDir === 'asc' ? 1 : -1;
@@ -551,7 +572,7 @@ td:hover {
     const rows = (item.history||[]).map(h=>[
       h.date||'', h.delta??'', h.note||'', h.price!=null ? h.price : '', h.user||'', h.ts ? new Date(h.ts).toISOString() : ''
     ]);
-    const tsv = [header, ...rows].map(r=>r.map(v=>String(v).replaceAll('\t',' ').replaceAll('\n',' ')).join('\t')).join('\n');
+    const tsv = [header, ...rows].map(r=>r.map(v=>String(v).replaceAll('\\t',' ').replaceAll('\\n',' ')).join('\\t')).join('\\n');
     navigator.clipboard.writeText(tsv).then(()=>alert('히스토리를 클립보드에 복사했습니다.')).catch(()=>alert('복사에 실패했습니다.'));
   });
 
