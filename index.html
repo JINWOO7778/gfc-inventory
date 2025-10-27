@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>지에프씨생명과학 재고 관리 (Realtime + Auth 안정화)</title>
+  <title>지에프씨생명과학 재고 관리 (Realtime + 즉시 히스토리 반영)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
@@ -200,7 +200,7 @@
   const db = getFirestore(app);
 
   const nf = new Intl.NumberFormat('ko-KR');
-  const storeKey = 'inv_items_cache_realtime_v1';
+  const storeKey = 'inv_items_cache_realtime_v2';
   const $ = s=>document.querySelector(s);
   const todayStr = () => new Date().toISOString().slice(0,10);
 
@@ -371,7 +371,6 @@
     try{
       if(currentId){
         const edited = { ...formToRecord(currentId) };
-        // keep history from server (onSnapshot will merge)
         await setDoc(doc(db,'items',currentId), edited, {merge:true});
         alert('수정되었습니다.');
       }else{
@@ -383,7 +382,6 @@
     }catch(e){
       console.error(e);
       showErrorLine('서버 저장 실패: ' + (e?.message || e));
-      // fallback local so user is not blocked
       if(currentId){
         const idx = items.findIndex(x=>x.id===currentId);
         if(idx>=0){ const edited={...items[idx], ...formToRecord(currentId)}; items[idx]=edited; }
@@ -409,23 +407,30 @@
     }
   }
 
+  // 변경 포인트: 입고/출고는 성공/실패와 무관하게 즉시 로컬에 반영하고 렌더링
   async function inbound(){
     if(!currentId) return;
     const idx=items.findIndex(x=>x.id===currentId); if(idx<0) return;
     const q = Number(d.t_qty.value || 0); if(q<=0){ alert('입고 수량은 양수로 입력'); return; }
     const date = d.t_date.value || todayStr(); const price = d.t_price.value; const note = d.t_note.value; const user = d.t_user.value;
-    const docRef=doc(db,'items',currentId);
-    const item=items[idx];
-    const history = (item.history||[]).slice();
-    history.push({ date, delta:q, note:(note||'').trim(), price: price!==''&&price!=null?Number(price):null, user:(user||'').trim(), ts: Date.now() });
+    const item = items[idx];
+    const entry = { date, delta:q, note:(note||'').trim(), price: price!==''&&price!=null?Number(price):null, user:(user||'').trim(), ts: Date.now() };
+
+    // 즉시 UI 반영
+    item.qty = Number(item.qty||0) + q;
+    item.stockDate = date;
+    if(entry.price!=null) item.price = entry.price;
+    item.history = item.history || [];
+    item.history.push(entry);
+    persistLocal(); renderItems(); if(currentId) renderHistory(item);
+
+    // 서버 반영
     try{
-      await updateDoc(docRef, { qty: Number(item.qty||0)+q, stockDate: date, price: price!==''&&price!=null?Number(price):item.price, history });
+      await updateDoc(doc(db,'items',currentId), { qty:item.qty, stockDate:date, price:item.price, history:item.history });
       d.t_qty.value=''; d.t_date.value=''; d.t_price.value=''; d.t_user.value=''; d.t_note.value='';
     }catch(e){
       console.error(e);
-      Object.assign(item, { qty:Number(item.qty||0)+q, stockDate:date, price: price!==''&&price!=null?Number(price):item.price, history });
-      persistLocal(); renderItems(); renderHistory(item);
-      alert('서버 실패: 로컬에만 반영되었습니다.');
+      alert('서버 반영 실패: 네트워크/권한 문제 (화면에는 로컬로 반영됨)');
     }
   }
 
@@ -435,18 +440,23 @@
     const q = Number(d.t_qty.value || 0); if(q<=0){ alert('출고 수량은 양수로 입력'); return; }
     const user = (d.t_user.value||'').trim(); if(!user){ alert('출고 사용자 입력'); return; }
     const date = d.t_date.value || todayStr(); const note = d.t_note.value;
-    const docRef=doc(db,'items',currentId);
-    const item=items[idx];
-    const history = (item.history||[]).slice();
-    history.push({ date, delta:-q, note:(note||'').trim(), price:null, user, ts: Date.now() });
+    const item = items[idx];
+    const entry = { date, delta:-q, note:(note||'').trim(), price:null, user, ts: Date.now() };
+
+    // 즉시 UI 반영
+    item.qty = Number(item.qty||0) - q;
+    item.stockDate = date;
+    item.history = item.history || [];
+    item.history.push(entry);
+    persistLocal(); renderItems(); if(currentId) renderHistory(item);
+
+    // 서버 반영
     try{
-      await updateDoc(docRef, { qty: Number(item.qty||0)-q, stockDate: date, history });
+      await updateDoc(doc(db,'items',currentId), { qty:item.qty, stockDate:date, history:item.history });
       d.t_qty.value=''; d.t_date.value=''; d.t_price.value=''; d.t_user.value=''; d.t_note.value='';
     }catch(e){
       console.error(e);
-      Object.assign(item, { qty:Number(item.qty||0)-q, stockDate:date, history });
-      persistLocal(); renderItems(); renderHistory(item);
-      alert('서버 실패: 로컬에만 반영되었습니다.');
+      alert('서버 반영 실패: 네트워크/권한 문제 (화면에는 로컬로 반영됨)');
     }
   }
 
@@ -522,6 +532,10 @@
       if(fromCache && !pending){ setSyncPill('Offline','캐시'); statusMsg.textContent='오프라인 캐시에서 표시 중'; }
       else if(pending){ setSyncPill('Online','동기화 중'); statusMsg.textContent='서버로 기록 전송 중…'; }
       else { setSyncPill('Online','정상'); statusMsg.textContent='실시간 동기화 중'; }
+      if(currentId){
+        const cur = items.find(x=>x.id===currentId);
+        if(cur) renderHistory(cur);
+      }
       f.btnApply.disabled = !authed;
     }, (err)=>{
       console.error('onSnapshot error', err);
