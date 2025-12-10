@@ -370,8 +370,10 @@
     if(!validateMainForm()) return;
     try{
       if(currentId){
-        const edited = { ...formToRecord(currentId) };
-        await setDoc(doc(db,'items',currentId), edited, {merge:true});
+        const base = formToRecord(currentId);
+        // 수정 시 기존 입출고 내역(history)을 덮어쓰지 않도록 제외
+        delete base.history;
+        await setDoc(doc(db,'items',currentId), base, {merge:true});
         alert('수정되었습니다.');
       }else{
         const rec = formToRecord();
@@ -384,7 +386,11 @@
       showErrorLine('서버 저장 실패: ' + (e?.message || e));
       if(currentId){
         const idx = items.findIndex(x=>x.id===currentId);
-        if(idx>=0){ const edited={...items[idx], ...formToRecord(currentId)}; items[idx]=edited; }
+        if(idx>=0){
+          const patch = formToRecord(currentId);
+          delete patch.history; // 로컬에서도 history 보존
+          items[idx] = {...items[idx], ...patch};
+        }
       }else{
         const rec = formToRecord(); items.push(rec);
       }
