@@ -2,10 +2,9 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>지에프씨생명과학 재고 관리 (자동완성 강화 버전)</title>
+  <title>지에프씨생명과학 재고 관리 (보안 강화 V6)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* 기존 스타일 유지 */
     :root{
       --brand-primary:#006d77; --brand-secondary:#83c5be; --brand-bg:#edf6f9;
       --gap:14px; --border:#e6e9ef; --muted:#5f6b7a; --bg:#f7fafc; --card:#fff;
@@ -19,6 +18,8 @@
     .logo-area{display:flex;align-items:center;gap:10px;font-weight:600;color:var(--brand-primary);} .logo{height:32px;object-fit:contain;}
     .csv-actions{display:flex;gap:10px;align-items:center;}
     .csv-actions button{padding:8px 12px;font-size:13px;border-radius:8px;background:var(--brand-primary);color:#fff;border:none;cursor:pointer;}
+    /* 마이그레이션 버튼 초기 숨김 */
+    #btnMigrate { display: none; background: #f59e0b !important; }
     .statusbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;padding:8px 10px;border:1px dashed var(--border);border-radius:8px;background:#fafafa;}
     .pill{padding:2px 8px;border-radius:999px;font-weight:600;font-size:11px;border:1px solid #d1d5db;background:#fff;}
     main{padding:20px;display:grid;gap:24px;max-width:1200px;margin:0 auto;}
@@ -45,8 +46,6 @@
     .quick-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
     .tag-btn{font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--brand-secondary);background:var(--brand-bg);cursor:pointer;color:var(--brand-primary);}
     .tag-btn:hover{background:var(--brand-secondary);color:#fff;}
-    .auto-filled { animation: highlight 1.5s ease; }
-    @keyframes highlight { 0% { background: #fff9c4; } 100% { background: #fff; } }
   </style>
 </head>
 <body>
@@ -55,14 +54,14 @@
   <div class="topline">
     <div class="logo-area"><img src="지에프씨-로고 PNG.png" class="logo" alt="GFC"/><span>지에프씨생명과학 재고 관리</span></div>
     <div class="csv-actions">
-      <button id="btnMigrate" style="background:#f59e0b;">⚙️ 데이터 마이그레이션</button>
+      <button id="btnMigrate">⚙️ 데이터 마이그레이션</button>
       <button id="btnExportXLSX">📤 내보내기</button>
     </div>
   </div>
   <div class="statusbar">
     <span class="pill pill-auth" id="authPill">Auth: 확인중</span>
     <span class="pill pill-online" id="syncPill">Sync: 온라인</span>
-    <span id="statusMsg" style="color:#6b7280;">실시간 동기화 활성화됨</span>
+    <span id="statusMsg" style="color:#6b7280;">시스템 정상 (Ctrl+Shift+M 키로 관리자 도구 활성화)</span>
   </div>
 </header>
 
@@ -70,7 +69,7 @@
   <section class="card">
     <h2>🔎 검색</h2>
     <div class="body">
-      <input type="text" id="searchInput" placeholder="품목명, Cat#, 연구소 등 공백으로 다중 검색 가능" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);"/>
+      <input type="text" id="searchInput" placeholder="품목명, Cat#, 연구소 등 공백으로 다중 검색" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);"/>
     </div>
   </section>
 
@@ -78,8 +77,8 @@
     <h2>➕ 품목 등록/수정 <span class="pill" id="editBadge" style="display:none;">✎ 수정 모드</span></h2>
     <div class="body">
       <div class="form-grid">
-        <div class="field"><label>Cat# (입력 시 자동 정보 호출)</label><input id="catalog" placeholder="카탈로그 번호 입력"/></div>
-        <div class="field"><label>품목명 *</label><input id="name" placeholder="품목명 입력 시에도 자동 호출"/></div>
+        <div class="field"><label>품목명 *</label><input id="name" placeholder="입력 시 기존 정보 자동 호출"/></div>
+        <div class="field"><label>Cat#</label><input id="catalog" placeholder="입력 시 기존 정보 자동 호출"/></div>
         <div class="field"><label>상위연구소</label>
           <select id="topLab">
             <option value="">전체공용</option>
@@ -93,7 +92,7 @@
         <div class="field"><label>하위Lab</label><select id="subLab"></select></div>
         <div class="field"><label>제조사</label><input id="manufacturer"/></div>
         <div class="field"><label>위치</label><input id="location"/></div>
-        <div class="field"><label>초기재고 (등록 시만)</label><input type="number" id="qty" value="0"/></div>
+        <div class="field"><label>초기재고</label><input type="number" id="qty" value="0"/></div>
         <div class="field"><label>단위</label><input id="unit"/></div>
         <div class="field"><label>단가(원)</label><input type="number" id="price" value="0"/></div>
       </div>
@@ -131,9 +130,9 @@
         <h4 style="margin:0 0 10px 0;">입출고 입력</h4>
         <div class="form-grid">
           <div class="field"><label>수량(+/-)</label><input type="number" id="t_qty"/></div>
-          <div class="field"><label>담당자</label><input id="t_user" placeholder="이름"/></div>
+          <div class="field"><label>담당자</label><input id="t_user"/></div>
           <div class="field" style="grid-column: span 2;">
-            <label>비고 (아래 버튼 클릭 시 자동 입력)</label>
+            <label>비고 (사유 퀵 버튼)</label>
             <input id="t_note"/>
             <div class="quick-tags">
               <button class="tag-btn" onclick="setNote('실험용')">🧪 실험용</button>
@@ -188,8 +187,7 @@
   const f = {
     name: $('#name'), manufacturer: $('#manufacturer'), catalog: $('#catalog'),
     topLab: $('#topLab'), subLab: $('#subLab'), qty: $('#qty'),
-    unit: $('#unit'), price: $('#price'), btnApply: $('#btnApply'),
-    location: $('#location')
+    unit: $('#unit'), price: $('#price'), btnApply: $('#btnApply'), location: $('#location')
   };
 
   const subLabMap = {
@@ -200,40 +198,35 @@
     "의료기기-동탄1공장": ["무균실","성형실","조립실","멸균/포장","QA/QC","창고"]
   };
 
+  // 키 조합 감지 (Ctrl + Shift + M)
+  window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.code === 'KeyM') {
+      const btn = $('#btnMigrate');
+      btn.style.display = (btn.style.display === 'block') ? 'none' : 'block';
+      alert("관리자용 데이터 이전 도구가 활성화되었습니다.");
+    }
+  });
+
   f.topLab.onchange = () => {
     const labs = subLabMap[f.topLab.value] || [];
     f.subLab.innerHTML = '<option value="">미지정</option>' + labs.map(l => `<option value="${l}">${l}</option>`).join('');
   };
 
-  // 강력한 자동완성 로직 (Cat# 또는 품목명 기반)
-  const handleAutoComplete = (e) => {
-    if (currentId) return; // 수정 모드 시 작동 방지
+  const autoFill = (e) => {
+    if (currentId) return;
     const val = e.target.value.trim();
-    if (val.length < 2) return; // 2글자 이상 시 검색
-
-    // Firestore에서 실시간으로 로드된 items 배열에서 찾기
+    if (val.length < 2) return;
     const match = items.find(i => i.catalog === val || i.name === val);
-    
     if (match) {
-      f.name.value = match.name || '';
-      f.catalog.value = match.catalog || '';
-      f.manufacturer.value = match.manufacturer || '';
-      f.unit.value = match.unit || '';
-      f.price.value = match.price || 0;
-      f.topLab.value = match.topLab || '';
-      f.topLab.onchange(); // 하위 랩 목록 갱신
-      f.subLab.value = match.subLab || '';
+      f.name.value = match.name || ''; f.catalog.value = match.catalog || '';
+      f.manufacturer.value = match.manufacturer || ''; f.unit.value = match.unit || '';
+      f.price.value = match.price || 0; f.topLab.value = match.topLab || '';
+      f.topLab.onchange(); f.subLab.value = match.subLab || '';
       f.location.value = match.location || '';
-      
-      // 사용자에게 시각적 피드백 제공
-      document.querySelectorAll('.field input, .field select').forEach(el => el.classList.add('auto-filled'));
-      setTimeout(() => document.querySelectorAll('.auto-filled').forEach(el => el.classList.remove('auto-filled')), 1500);
     }
   };
-
-  // 입력 중 실시간 감지
-  f.catalog.addEventListener('input', handleAutoComplete);
-  f.name.addEventListener('input', handleAutoComplete);
+  f.catalog.addEventListener('input', autoFill);
+  f.name.addEventListener('input', autoFill);
 
   window.setNote = (txt) => { $('#t_note').value = txt; };
 
@@ -313,7 +306,7 @@
 
   $('#btnInbound').onclick = async () => {
     const q = Number($('#t_qty').value);
-    if(q <= 0) return alert('입고 수량은 0보다 커야 합니다.');
+    if(q <= 0) return alert('수량을 입력하세요.');
     const itemRef = doc(db, 'items', currentId);
     await updateDoc(itemRef, { qty: increment(q), stockDate: todayStr() });
     await addDoc(collection(itemRef, 'history'), {
@@ -324,11 +317,11 @@
 
   $('#btnOutbound').onclick = async () => {
     const q = Number($('#t_qty').value);
-    if(q <= 0) return alert('출고 수량은 0보다 커야 합니다.');
+    if(q <= 0) return alert('수량을 입력하세요.');
     try {
       await runTransaction(db, async (transaction) => {
         const itemDoc = await transaction.get(doc(db, 'items', currentId));
-        if((itemDoc.data().qty || 0) < q) throw "재고가 부족합니다.";
+        if((itemDoc.data().qty || 0) < q) throw "재고 부족";
         transaction.update(itemDoc.ref, { qty: increment(-q), stockDate: todayStr() });
         transaction.set(doc(collection(itemDoc.ref, 'history')), {
           date: todayStr(), delta: -q, user: $('#t_user').value, note: $('#t_note').value, createdAt: Date.now()
@@ -339,7 +332,9 @@
   };
 
   $('#btnMigrate').onclick = async () => {
-    if(!confirm("기존 기록을 새 구조로 이전합니까?")) return;
+    const pw = prompt("관리자 비밀번호를 입력하세요.");
+    if (pw !== '9311aabb') return alert("비밀번호 오류");
+    if(!confirm("이전하시겠습니까?")) return;
     const snap = await getDocs(collection(db, 'items'));
     let batch = writeBatch(db);
     snap.forEach(d => {
@@ -352,7 +347,8 @@
       }
     });
     await batch.commit();
-    alert('이전 완료');
+    alert('완료');
+    $('#btnMigrate').style.display = 'none';
   };
 
   window.resetForm = () => {
@@ -365,8 +361,8 @@
   window.editItem = (id) => {
     const item = items.find(i => i.id === id);
     currentId = id; f.name.value = item.name; f.manufacturer.value = item.manufacturer || '';
-    f.catalog.value = item.catalog || '';
-    f.topLab.value = item.topLab || ''; f.topLab.onchange(); f.subLab.value = item.subLab || '';
+    f.catalog.value = item.catalog || ''; f.topLab.value = item.topLab || '';
+    f.topLab.onchange(); f.subLab.value = item.subLab || '';
     f.unit.value = item.unit || ''; f.price.value = item.price || 0;
     f.location.value = item.location || '';
     $('#editBadge').style.display = 'inline'; window.scrollTo(0,0);
