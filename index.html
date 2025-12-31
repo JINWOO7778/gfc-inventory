@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>지에프씨생명과학 재고 관리 (보안 강화 V6)</title>
+  <title>지에프씨생명과학 재고 관리 (검색 및 날짜 개선 V7)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
@@ -18,7 +18,6 @@
     .logo-area{display:flex;align-items:center;gap:10px;font-weight:600;color:var(--brand-primary);} .logo{height:32px;object-fit:contain;}
     .csv-actions{display:flex;gap:10px;align-items:center;}
     .csv-actions button{padding:8px 12px;font-size:13px;border-radius:8px;background:var(--brand-primary);color:#fff;border:none;cursor:pointer;}
-    /* 마이그레이션 버튼 초기 숨김 */
     #btnMigrate { display: none; background: #f59e0b !important; }
     .statusbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;padding:8px 10px;border:1px dashed var(--border);border-radius:8px;background:#fafafa;}
     .pill{padding:2px 8px;border-radius:999px;font-weight:600;font-size:11px;border:1px solid #d1d5db;background:#fff;}
@@ -61,15 +60,15 @@
   <div class="statusbar">
     <span class="pill pill-auth" id="authPill">Auth: 확인중</span>
     <span class="pill pill-online" id="syncPill">Sync: 온라인</span>
-    <span id="statusMsg" style="color:#6b7280;">시스템 정상 (Ctrl+Shift+M 키로 관리자 도구 활성화)</span>
+    <span id="statusMsg" style="color:#6b7280;">시스템 정상 (Ctrl+Shift+M 관리자 모드)</span>
   </div>
 </header>
 
 <main>
   <section class="card">
-    <h2>🔎 검색</h2>
+    <h2>🔎 통합 검색 (연구소, Lab, 품목명 등)</h2>
     <div class="body">
-      <input type="text" id="searchInput" placeholder="품목명, Cat#, 연구소 등 공백으로 다중 검색" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);"/>
+      <input type="text" id="searchInput" placeholder="예: 세포공정팀 공정개발Lab (공백으로 구분하여 다중 검색 가능)" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);"/>
     </div>
   </section>
 
@@ -108,7 +107,7 @@
     <div class="body">
       <div class="table-wrap">
         <table id="itemsTable">
-          <thead><tr><th>작업</th><th>품목명</th><th>Cat#</th><th>연구소</th><th class="num">재고</th><th>단위</th><th>최종확인</th></tr></thead>
+          <thead><tr><th>작업</th><th>품목명</th><th>Cat#</th><th>상위연구소</th><th>하위Lab</th><th class="num">재고</th><th>단위</th><th>최종확인</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -129,17 +128,17 @@
       <div style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid var(--border);">
         <h4 style="margin:0 0 10px 0;">입출고 입력</h4>
         <div class="form-grid">
+          <div class="field"><label>날짜 선택</label><input type="date" id="t_date"/></div>
           <div class="field"><label>수량(+/-)</label><input type="number" id="t_qty"/></div>
           <div class="field"><label>담당자</label><input id="t_user"/></div>
-          <div class="field" style="grid-column: span 2;">
+          <div class="field" style="grid-column: span 1;">
             <label>비고 (사유 퀵 버튼)</label>
             <input id="t_note"/>
             <div class="quick-tags">
               <button class="tag-btn" onclick="setNote('실험용')">🧪 실험용</button>
-              <button class="tag-btn" onclick="setNote('샘플 제공')">🎁 샘플 제공</button>
-              <button class="tag-btn" onclick="setNote('공정 테스트')">⚙️ 공정 테스트</button>
-              <button class="tag-btn" onclick="setNote('재고 실사')">📋 재고 실사</button>
-              <button class="tag-btn" onclick="setNote('유통기한 경과')">⚠️ 유통기한 경과</button>
+              <button class="tag-btn" onclick="setNote('샘플')">🎁 샘플</button>
+              <button class="tag-btn" onclick="setNote('폐기')">🗑️ 폐기</button>
+              <button class="tag-btn" onclick="setNote('실사')">📋 실사</button>
             </div>
           </div>
           <div class="actions" style="align-self: flex-end; grid-column: 1/-1; justify-content: flex-end;">
@@ -150,7 +149,7 @@
       </div>
       <div class="table-wrap">
         <table id="historyTable">
-          <thead><tr><th>날짜</th><th class="num">변동</th><th>담당자</th><th>비고</th><th>시각</th></tr></thead>
+          <thead><tr><th>기록날짜</th><th class="num">변동</th><th>담당자</th><th>비고</th><th>등록시각</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -198,18 +197,17 @@
     "의료기기-동탄1공장": ["무균실","성형실","조립실","멸균/포장","QA/QC","창고"]
   };
 
-  // 키 조합 감지 (Ctrl + Shift + M)
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && e.code === 'KeyM') {
       const btn = $('#btnMigrate');
       btn.style.display = (btn.style.display === 'block') ? 'none' : 'block';
-      alert("관리자용 데이터 이전 도구가 활성화되었습니다.");
+      alert("관리자 모드 활성화");
     }
   });
 
   f.topLab.onchange = () => {
     const labs = subLabMap[f.topLab.value] || [];
-    f.subLab.innerHTML = '<option value="">미지정</option>' + labs.map(l => `<option value="${l}">${l}</option>`).join('');
+    f.subLab.innerHTML = '<option value="">미지정(전체)</option>' + labs.map(l => `<option value="${l}">${l}</option>`).join('');
   };
 
   const autoFill = (e) => {
@@ -235,11 +233,12 @@
     renderItems();
   });
 
+  // 검색 로직: 상위연구소 + 하위Lab + 품목명 모두 검색 가능하도록 수정
   function renderItems() {
     const raw = $('#searchInput').value.toLowerCase();
     const terms = raw.split(/\s+/).filter(Boolean);
     const filtered = items.filter(i => {
-      const blob = `${i.name} ${i.catalog} ${i.topLab} ${i.subLab}`.toLowerCase();
+      const blob = `${i.name} ${i.catalog} ${i.topLab} ${i.subLab} ${i.manufacturer} ${i.location}`.toLowerCase();
       return terms.every(t => blob.includes(t));
     });
     const tbody = $('#itemsTable tbody');
@@ -254,6 +253,7 @@
         <td><b>${item.name}</b></td>
         <td>${item.catalog || ''}</td>
         <td>${item.topLab || ''}</td>
+        <td>${item.subLab || ''}</td>
         <td class="num">${nf.format(item.qty || 0)}</td>
         <td>${item.unit || ''}</td>
         <td>${item.stockDate || ''}</td>
@@ -285,6 +285,7 @@
     currentId = id;
     const item = items.find(i => i.id === id);
     $('#detailTitle').textContent = `상세: ${item.name}`;
+    $('#t_date').value = todayStr(); // 상세 열 때 날짜를 오늘로 초기화
     $('#detailModal').classList.add('open');
     if(historyUnsub) historyUnsub();
     const hQuery = query(collection(db, 'items', id, 'history'), orderBy('createdAt', 'desc'), limit(50));
@@ -306,25 +307,29 @@
 
   $('#btnInbound').onclick = async () => {
     const q = Number($('#t_qty').value);
+    const date = $('#t_date').value;
     if(q <= 0) return alert('수량을 입력하세요.');
+    if(!date) return alert('날짜를 선택하세요.');
     const itemRef = doc(db, 'items', currentId);
-    await updateDoc(itemRef, { qty: increment(q), stockDate: todayStr() });
+    await updateDoc(itemRef, { qty: increment(q), stockDate: date });
     await addDoc(collection(itemRef, 'history'), {
-      date: todayStr(), delta: q, user: $('#t_user').value, note: $('#t_note').value, createdAt: Date.now()
+      date: date, delta: q, user: $('#t_user').value, note: $('#t_note').value, createdAt: Date.now()
     });
     $('#t_qty').value = ''; $('#t_note').value = ''; alert('입고 완료');
   };
 
   $('#btnOutbound').onclick = async () => {
     const q = Number($('#t_qty').value);
+    const date = $('#t_date').value;
     if(q <= 0) return alert('수량을 입력하세요.');
+    if(!date) return alert('날짜를 선택하세요.');
     try {
       await runTransaction(db, async (transaction) => {
         const itemDoc = await transaction.get(doc(db, 'items', currentId));
         if((itemDoc.data().qty || 0) < q) throw "재고 부족";
-        transaction.update(itemDoc.ref, { qty: increment(-q), stockDate: todayStr() });
+        transaction.update(itemDoc.ref, { qty: increment(-q), stockDate: date });
         transaction.set(doc(collection(itemDoc.ref, 'history')), {
-          date: todayStr(), delta: -q, user: $('#t_user').value, note: $('#t_note').value, createdAt: Date.now()
+          date: date, delta: -q, user: $('#t_user').value, note: $('#t_note').value, createdAt: Date.now()
         });
       });
       $('#t_qty').value = ''; $('#t_note').value = ''; alert('출고 완료');
@@ -332,9 +337,8 @@
   };
 
   $('#btnMigrate').onclick = async () => {
-    const pw = prompt("관리자 비밀번호를 입력하세요.");
-    if (pw !== '9311aabb') return alert("비밀번호 오류");
-    if(!confirm("이전하시겠습니까?")) return;
+    const pw = prompt("관리자 비밀번호");
+    if (pw !== '9311aabb') return alert("오류");
     const snap = await getDocs(collection(db, 'items'));
     let batch = writeBatch(db);
     snap.forEach(d => {
@@ -358,6 +362,7 @@
   };
   $('#btnReset').onclick = window.resetForm;
   $('#btnClose').onclick = () => { $('#detailModal').classList.remove('open'); if(historyUnsub) historyUnsub(); };
+  
   window.editItem = (id) => {
     const item = items.find(i => i.id === id);
     currentId = id; f.name.value = item.name; f.manufacturer.value = item.manufacturer || '';
